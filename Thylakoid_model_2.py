@@ -12,6 +12,7 @@ import pickle
 
 
 
+
 #Particle class definition
 
 class Particle(object):
@@ -25,6 +26,7 @@ class Particle(object):
     C2S2M2_LHCIId = np.matrix([[11.0,0.0]]).T 
     C2S2_LHCIIa = np.matrix([[-7.0,7.0]]).T
     C2S2_LHCIIb = np.matrix([[7.0,-7.0]]).T
+    
     
     #make a pickled diction of PDB matrices
     #Unshifted_particle_matrix = {'test' : np.matrix([[-1,1],[0,1],[1,1],[-1,0],[0,0],[1,0],[-1,-1],[0,-1],[1,-1]]).T,}
@@ -85,6 +87,13 @@ class Particle(object):
         
         else:
             pass
+    
+    
+    def bound_Chorophylls(self):
+        """Returns a matrix containing locations of the chlorophylls""" 
+        X1 = self.rotate(self.rotation,Complexes_Chl[self.Ptype],0)
+        X2 = self.translate(X1,self.location)
+        return self.remove_repeat_cols(X2).astype(int)
         
 
     
@@ -588,9 +597,202 @@ def Density_Analysis(POPULATION):
     
     return grana_density, sl_density
 
+
+
+
+class Dgraph:
+    
+    
+    xmax_factor = 10000 # this is used in init as the factor c (c*x+y)
+    def __init__(self,coords,threshold):
+        """creates the nx graph if the distance is less than or equal to threshold"""
+        
+        # import relevant modules
+        import numpy as np
+        import networkx as nx
+        import matplotlib.pyplot as plt
+        import scipy.spatial.distance as dist
+
+        
+        self.G = nx.Graph()
+        self.coordinates = coords
+        #node_indices apply a unique number to the x,y coordinates
+        """
+        for xy1 in coords:
+            for xy2 in coords:
+                if xy1 != xy2:
+                    if self.distance(xy1,xy2) <= threshold:
+                        self.G.add_edge(self.node_num(xy1),self.node_num(xy2),weight=self.distance(xy1,xy2))
+        """
+        D = dist.cdist(np.array(coords),np.array(coords))
+
+        Y = np.arange(len(coords))
+        for x1 in Y:
+            for x2 in Y:
+                if x1 != x2:
+                    if D[x1,x2] <= threshold:
+                        self.G.add_edge(self.node_num(coords[x1]),self.node_num(coords[x2]),weight=D[x1,x2])
+        
+    def node_num(self, X):
+        """transforms an X = [x,y] into c*x+y using xmax_factor"""
+        min = 500
+        xmax_factor = 10000
+        return (X[0]+500)*xmax_factor+(X[1]+500)
+    
+    @staticmethod
+    def distance(x1,x2):
+        """calculates the Euclidean distance between x1 and x2 (in the form [x,y])"""
+        
+        return float(dist.cdist(np.matrix(x1), np.matrix(x2)))
+    
+    def draw(self,nodecolor='b', edge_color='k'):
+        
+        options = {
+            'node_color': 'blue',
+            'node_size': 25,
+            'line_color': 'grey',
+            'linewidths': 0,
+            'width': 0.1,
+        }
+        nx.draw(self.G, **options)
+
+    
+    def Ddraw(self):
+        """draws the graph using coordinates"""
+        
+        X = []
+        Y = []
+        # draw the edges
+        for x in self.coordinates:
+            for x2 in self.coordinates:
+                if [self.node_num(x), self.node_num(x2)] in self.G.edges: 
+                    X.append([x[0],x2[0]])
+                    Y.append([x[1],x2[1]])
+        
+        plt.plot(np.array(X).T,np.array(Y).T,'k-', lw=1)
+        
+        #draw the nodes
+        #XY_array = np.array(self.coordinates).T
+        #plt.scatter(XY_array[0,:],XY_array[1,:],color='k')
+        
+        plt.show()
+    
+    def edges(self):
+        return self.G.edges
+    
+    def has_path(self,x1,x2):
+        if [self.node_num(x1),self.node_num(x2)] in self.G.edges():
+            return nx.has_path(self.G, self.node_num(x1),self.node_num(x2))
+        else:
+            return False
+        
+ 
+# Network classes for antenna analysis 
+class Chlorophyll_Network(Dgraph):
+        
+    def __init__(self,POPULATION,threshold=5):
+        #Node_list = coordinate_list(C2S2M2_POP+C2S2_POP+LHCII_POP)
+        # import relevant modules
+        import numpy as np
+        import networkx as nx
+        import matplotlib.pyplot as plt
+
+        import scipy.spatial.distance as dist
+        
+        #instantiate the underlying nx graph
+        
+        
+        self.G = nx.Graph()
+        
+        
+        #go through the combinations of C2S2M2 and other complexes
+        #check to see if bidirectional
+        
+        #C2S2M2
+        C2S2M2_POP = [p for p in POPULATION if p.Ptype =="C2S2M2"]
+        
+        #C2S2
+        C2S2_POP = [p for p in POPULATION if p.Ptype =="C2S2"]
+        
+        #LHCII
+        LHCII_POP = [p for p in POPULATION if p.Ptype =="LHCII"]
+        
+        for c2s2m2 in C2S2M2_POP:
+            
+            C2S2M2_Chlorophylls = c2s2m2.bound_Chorophylls()
+            for c2s2m2_2 in C2S2M2_POP:
+                print(self.node_num(c2s2m2.location.T.tolist()[0]),self.node_num(c2s2m2_2.location.T.tolist()[0]))
+                if c2s2m2.location.T.tolist()[0] != c2s2m2_2.location.T.tolist()[0]:
+                    C2S2M2_Chlorophylls_2 = c2s2m2_2.bound_Chorophylls()
+                    d = np.min(self.distances(C2S2M2_Chlorophylls,C2S2M2_Chlorophylls_2))
+                    if d <=threshold:
+                        
+                        self.G.add_edge(self.node_num(c2s2m2.location.T.tolist()[0]),self.node_num(c2s2m2_2.location.T.tolist()[0]),weight=d)
+                
+            for c2s2 in C2S2_POP:
+                C2S2_Chlorophylls = c2s2.bound_Chorophylls()
+
+                d = np.min(self.distances(C2S2M2_Chlorophylls,C2S2_Chlorophylls))
+                if d <=threshold:
+                    self.G.add_edge(self.node_num(c2s2m2.location.tolist()),self.node_num(c2s2.location.tolist()),weight=d)
+
+            for lhcii in LHCII_POP:
+                LHCII_Chlorophylls = lhcii.bound_Chorophylls()
+
+                d = np.min(self.distances(C2S2M2_Chlorophylls,LHCII_Chlorophylls))
+                if d <=threshold:
+                    self.G.add_edge(self.node_num(c2s2m2.location.T.tolist()[0]),self.node_num(lhcii.location.T.tolist()[0]),weight=d)
+        
+        #C2S2
+        for c2s2 in C2S2_POP:
+            C2S2_Chlorophylls = c2s2.bound_Chorophylls()
+                
+            for c2s2m2 in C2S2M2_POP:
+                    C2S2M2_Chlorophylls = c2s2m2.bound_Chorophylls()
+                    d = np.min(self.distances(C2S2_Chlorophylls,C2S2M2_Chlorophylls))
+                    if d <=threshold:
+                        self.G.add_edge(self.node_num(c2s2.location.tolist()),self.node_num(c2s2m2.location.tolist()),weight=d)
+
+            for c2s2_2 in C2S2_POP:
+                if c2s2.location.T.tolist()[0] != c2s2_2.location.T.tolist()[0]:
+                    C2S2_Chlorophylls_2 = c2s2_2.bound_Chorophylls()
+
+                    d = np.min(self.distances(C2S2_Chlorophylls,C2S2_Chlorophylls_2))
+                    if d <=threshold:
+                        self.G.add_edge(self.node_num(c2s2.location.T.tolist()[0]),self.node_num(c2s2_2.location.T.tolist()[0]),weight=d)
+
+            for lhcii in LHCII_POP:
+                LHCII_Chlorophylls = lhcii.bound_Chorophylls()
+
+                d = np.min(self.distances(C2S2_Chlorophylls,LHCII_Chlorophylls))
+                if d <=threshold:
+                    self.G.add_edge(self.node_num(c2s2.location.T.tolist()[0]),self.node_num(lhcii.location.T.tolist()[0]),weight=d)
+
+        #LHCII
+        for lhcii in LHCII_POP:
+            LHCII_Chlorophylls = lhcii.bound_Chorophylls()
+            for lhcii_2 in LHCII_POP:
+                if lhcii.location.T.tolist()[0] != lhcii_2.location.T.tolist()[0]:
+                    LHCII_Chlorophylls_2 = lhcii_2.bound_Chorophylls()
+
+                    d = np.min(self.distances(LHCII_Chlorophylls,LHCII_Chlorophylls_2))
+                    if d <=threshold:
+                        self.G.add_edge(self.node_num(lhcii.location.T.tolist()[0]),self.node_num(lhcii_2.location.T.tolist()[0]),weight=d)
+
+        
+
+    
+    @staticmethod
+    def distances(M1,M2):
+        """returns a 1D matrix of distances between M1 and M2"""
+        D = dist.cdist(M1.T,M2.T)
+        return np.absolute(np.ndarray.flatten(D))
+
+
 def Run_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
     ##parameters which describe the model
     ##see Wood et al., 2019/2020 for more details
+    
     
     #the following are made global for use in analysis
     global grana_radius
@@ -606,6 +808,7 @@ def Run_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
     global NPSII_SL
     global LHCII_per_RC
     global Complexes
+    global Complexes_Chl 
     
     grana_radius = GRANA_RADIUS
     PSI_PSII_ratio = 1
@@ -636,13 +839,15 @@ def Run_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
     NLHCII_SL =  round((1-LHCII_grana)*(NPSII*2*LHCII_per_RC-(NC2S2*2+NC2S2M2*4)))
     
     
+    Complexes_Chl = pickle.load(open("Complexes_Chl.p",'rb')) # for antenna analysis
     Complexes = pickle.load(open("Complexes.p", 'rb'))
     
     Dir_Name = "./"+EXPERIMENT+"_"+DATE+"/Data/" # directory where the data is
     
+    print("Running Analysis of simulation "+EXPERIMENT+"_"+DATE)
     # The dataframe Analysis_Results contains results of all analyses
     Analysis_Results = pd.DataFrame(columns=["PSII_avg_NN","LHCII_avg_NN","PSI_avg_NN","LHCII_grana_fraction","Grana_density","SL_density"])
-    for t in range(10000000,11000000,1000): # data taken between 10 and 11 M in steps of 1k
+    for t in range(10000000,10050000,1000): # data taken between 10 and 11 M in steps of 1k
          #load the data from file
          POPULATION1 = pickle.load(open(Dir_Name+"POPULATION1_"+str(t), 'rb'))
          
@@ -655,27 +860,27 @@ def Run_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
          
          #add the results to the dataframe 
          Analysis_Results = Analysis_Results.append({"PSII_avg_NN":NN_PSII,"LHCII_avg_NN":NN_LHCII,"PSI_avg_NN":NN_PSI,"LHCII_grana_fraction":LHCII_grana_fraction,"Grana_density":grana_density, "SL_density":sl_density},ignore_index=True)
-         
-
     
-    Analysis_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/Results.csv")
+    Antenna_graph = Chlorophyll_Network(POPULATION1)
+    Antenna_graph.Ddraw()
+    #Analysis_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/Results.csv")
     print(Analysis_Results.head())
 
 
-# Also do antenna analysis
 
-if __name__== '__main__':
-    GRANA_SIZE = 170 # width of grana, nm.
-    DATE = "10_04_19"  # a reference date in which the simulations are run.
-    EXPERIMENT = "SI"   # a reference for which experiment is being run.
-    Number_of_iterations = 11000001 # number of Monte Carlo steps, Note that data is only collected after 10M iterations.
-    Stacking_Interaction_Energy = 4 # stacking interaction strength, kT (default = 4).
-    LHCII_Binding_Interaction_Energy = 2 # intralayer LHCII interaction strength, kT (default = 2).
-    
-    t0 = time.time()
-    #POPULATION1, POPULATION2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy)
-    Run_analysis(GRANA_SIZE,DATE,EXPERIMENT)
-    print("Completed in ", time.time()-t0, "seconds")
+#if __name__== '__main__':
+GRANA_SIZE = 170 # width of grana, nm.
+DATE = "10_04_19"  # a reference date in which the simulations are run.
+EXPERIMENT = "SI"   # a reference for which experiment is being run.
+Number_of_iterations = 11000001 # number of Monte Carlo steps, Note that data is only collected after 10M iterations.
+Stacking_Interaction_Energy = 4 # stacking interaction strength, kT (default = 4).
+LHCII_Binding_Interaction_Energy = 2 # intralayer LHCII interaction strength, kT (default = 2).
 
-    
-    plt.show()
+
+t0 = time.time()
+#POPULATION1, POPULATION2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy)
+Run_analysis(GRANA_SIZE,DATE,EXPERIMENT)
+print("Completed in ", time.time()-t0, "seconds")
+
+
+plt.show()
