@@ -9,8 +9,10 @@ import pickle
 ##WHJWood Thylakoid model 2.0 05/03/19
 #Date of last edit: 16/04/19
 
-
-
+global Complexes
+global Complexes_Chl
+Complexes_Chl = pickle.load(open("Complexes_Chl.p",'rb')) # for antenna analysis
+Complexes = pickle.load(open("Complexes.p", 'rb'))
 
 
 #Particle class definition
@@ -31,14 +33,12 @@ class Particle(object):
     #make a pickled diction of PDB matrices
     #Unshifted_particle_matrix = {'test' : np.matrix([[-1,1],[0,1],[1,1],[-1,0],[0,0],[1,0],[-1,-1],[0,-1],[1,-1]]).T,}
     
-    def __init__(self,x,y,theta, particle_type):
-        try:            
-            self.location = np.matrix([[int(x)],[int(y)]])
-            self.rotation = float(theta)
-            self.Ptype = str(particle_type)
-            self.Pmatrix = self.particle_matrix()
-        except:
-            print("Values for particle location, rotation or type are of incorrect format")
+    def __init__(self,x,y,theta, particle_type):            
+        self.location = np.matrix([[int(x)],[int(y)]])
+        self.rotation = float(theta)
+        self.Ptype = str(particle_type)
+        self.Pmatrix = self.particle_matrix()
+
     
     def particle_matrix(self):
         """takes the list [translation, rotation] and produces the particle matrix for P""" 
@@ -115,14 +115,12 @@ class Particle(object):
 class SudoParticle(Particle):
     # Same as particle but takes a location matrix
     # used for particle steps
-    def __init__(self,Location,theta, particle_type):
-        try:            
-            self.location = Location
-            self.rotation = float(theta)
-            self.Ptype = str(particle_type)
-            self.Pmatrix = self.particle_matrix()
-        except:
-            print("Values for particle location, rotation or type are of incorrect format")
+    def __init__(self,Location,theta, particle_type):            
+        self.location = Location
+        self.rotation = float(theta)
+        self.Ptype = str(particle_type)
+        self.Pmatrix = self.particle_matrix()
+
 
 ### Functions for overlap detection    
 
@@ -148,6 +146,31 @@ def collision3(X,P):
 
 
 ### Utility functions
+
+def Save_Population(population, path):
+    """Saves population (Particle class) data as csv in form x,y,theta,Ptype"""
+    Population = pd.DataFrame(columns = ["x","y","theta","Ptype"])
+    for particle in population:
+        xy_coordinate = particle.location.T.tolist()[0]
+        theta = particle.rotation
+        PTYPE = particle.Ptype
+        row = pd.DataFrame([[xy_coordinate[0],xy_coordinate[1],theta,PTYPE]],columns = ["x","y","theta","Ptype"])
+        Population = Population.append(row,ignore_index=True)
+    Population.to_csv(path)
+
+def Load_Population(path):
+    """Loads data from csv (x,y,theta,Ptype) and returns a list of Particle class instances"""
+    POP_df = pd.read_csv(path) # dataframe containing particle data
+    population = []
+    for index, row in POP_df.iterrows():        
+        x = int(row['x'])
+        y = int(row['y'])
+        theta = float(row['theta'])
+        PTYPE = str(row['Ptype'])
+        particle = Particle(x,y,theta,PTYPE)
+        population.append(particle)
+    return population
+
 def list_to_matrix(coords):
     return np.matrix(coords).T
 
@@ -717,11 +740,13 @@ class Chlorophyll_Network(Dgraph):
         #LHCII
         LHCII_POP = [p for p in POPULATION if p.Ptype =="LHCII"]
         
+        self.coordinates = [p.location.T.tolist()[0] for p in C2S2M2_POP+C2S2_POP+LHCII_POP]
+        
         for c2s2m2 in C2S2M2_POP:
             
             C2S2M2_Chlorophylls = c2s2m2.bound_Chorophylls()
             for c2s2m2_2 in C2S2M2_POP:
-                print(self.node_num(c2s2m2.location.T.tolist()[0]),self.node_num(c2s2m2_2.location.T.tolist()[0]))
+                
                 if c2s2m2.location.T.tolist()[0] != c2s2m2_2.location.T.tolist()[0]:
                     C2S2M2_Chlorophylls_2 = c2s2m2_2.bound_Chorophylls()
                     d = np.min(self.distances(C2S2M2_Chlorophylls,C2S2M2_Chlorophylls_2))
@@ -734,7 +759,7 @@ class Chlorophyll_Network(Dgraph):
 
                 d = np.min(self.distances(C2S2M2_Chlorophylls,C2S2_Chlorophylls))
                 if d <=threshold:
-                    self.G.add_edge(self.node_num(c2s2m2.location.tolist()),self.node_num(c2s2.location.tolist()),weight=d)
+                    self.G.add_edge(self.node_num(c2s2m2.location.T.tolist()[0]),self.node_num(c2s2.location.T.tolist()[0]),weight=d)
 
             for lhcii in LHCII_POP:
                 LHCII_Chlorophylls = lhcii.bound_Chorophylls()
@@ -751,7 +776,7 @@ class Chlorophyll_Network(Dgraph):
                     C2S2M2_Chlorophylls = c2s2m2.bound_Chorophylls()
                     d = np.min(self.distances(C2S2_Chlorophylls,C2S2M2_Chlorophylls))
                     if d <=threshold:
-                        self.G.add_edge(self.node_num(c2s2.location.tolist()),self.node_num(c2s2m2.location.tolist()),weight=d)
+                        self.G.add_edge(self.node_num(c2s2.location.T.tolist()[0]),self.node_num(c2s2m2.location.T.tolist()[0]),weight=d)
 
             for c2s2_2 in C2S2_POP:
                 if c2s2.location.T.tolist()[0] != c2s2_2.location.T.tolist()[0]:
@@ -847,30 +872,30 @@ def Run_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
     print("Running Analysis of simulation "+EXPERIMENT+"_"+DATE)
     # The dataframe Analysis_Results contains results of all analyses
     Analysis_Results = pd.DataFrame(columns=["PSII_avg_NN","LHCII_avg_NN","PSI_avg_NN","LHCII_grana_fraction","Grana_density","SL_density"])
-    for t in range(10000000,10050000,1000): # data taken between 10 and 11 M in steps of 1k
+    for t in range(9000000,10000000,10000): # data taken between 10 and 11 M in steps of 1k
          #load the data from file
-         POPULATION1 = pickle.load(open(Dir_Name+"POPULATION1_"+str(t), 'rb'))
+         POPULATION1 = Load_Population(Dir_Name+"Population1_"+str(t))
          
          #run the analysis functions defined elsewhere
-         NN_PSII = Nearest_Neighbour_Distances(POPULATION1, ["C2S2M2","C2S2"])
-         NN_LHCII = Nearest_Neighbour_Distances(POPULATION1, ["LHCII"])
-         NN_PSI = Nearest_Neighbour_Distances(POPULATION1, ["PSI"])
-         LHCII_grana_fraction = LHCII_Localisation_Analysis(POPULATION1)
-         grana_density, sl_density = Density_Analysis(POPULATION1)
+         #NN_PSII = Nearest_Neighbour_Distances(POPULATION1, ["C2S2M2","C2S2"])
+         #NN_LHCII = Nearest_Neighbour_Distances(POPULATION1, ["LHCII"])
+         #NN_PSI = Nearest_Neighbour_Distances(POPULATION1, ["PSI"])
+         #LHCII_grana_fraction = LHCII_Localisation_Analysis(POPULATION1)
+         #grana_density, sl_density = Density_Analysis(POPULATION1)
          
          #add the results to the dataframe 
-         Analysis_Results = Analysis_Results.append({"PSII_avg_NN":NN_PSII,"LHCII_avg_NN":NN_LHCII,"PSI_avg_NN":NN_PSI,"LHCII_grana_fraction":LHCII_grana_fraction,"Grana_density":grana_density, "SL_density":sl_density},ignore_index=True)
+         #Analysis_Results = Analysis_Results.append({"PSII_avg_NN":NN_PSII,"LHCII_avg_NN":NN_LHCII,"PSI_avg_NN":NN_PSI,"LHCII_grana_fraction":LHCII_grana_fraction,"Grana_density":grana_density, "SL_density":sl_density},ignore_index=True)
     
     Antenna_graph = Chlorophyll_Network(POPULATION1)
     Antenna_graph.Ddraw()
     #Analysis_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/Results.csv")
-    print(Analysis_Results.head())
+    print(Analysis_Results.tail())
 
 
 
 #if __name__== '__main__':
 GRANA_SIZE = 170 # width of grana, nm.
-DATE = "10_04_19"  # a reference date in which the simulations are run.
+DATE = "25_04_19"  # a reference date in which the simulations are run.
 EXPERIMENT = "SI"   # a reference for which experiment is being run.
 Number_of_iterations = 11000001 # number of Monte Carlo steps, Note that data is only collected after 10M iterations.
 Stacking_Interaction_Energy = 4 # stacking interaction strength, kT (default = 4).
@@ -878,7 +903,7 @@ LHCII_Binding_Interaction_Energy = 2 # intralayer LHCII interaction strength, kT
 
 
 t0 = time.time()
-#POPULATION1, POPULATION2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy)
+#OPULATION1, POPULATION2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy)
 Run_analysis(GRANA_SIZE,DATE,EXPERIMENT)
 print("Completed in ", time.time()-t0, "seconds")
 
