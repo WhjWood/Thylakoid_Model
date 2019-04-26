@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import scipy.spatial.distance as dist
 import pandas as pd
 import pickle
+import networkx as nx
 
 
 ##WHJWood Thylakoid model 2.0 05/03/19
@@ -727,9 +728,9 @@ class Chlorophyll_Network(Dgraph):
         
         self.G = nx.Graph()
         
+        self.Distance_Cutoff = 50 # Distance an exciton can travel before fluorescence
         
-        #go through the combinations of C2S2M2 and other complexes
-        #check to see if bidirectional
+        
         
         #C2S2M2
         C2S2M2_POP = [p for p in POPULATION if p.Ptype =="C2S2M2"]
@@ -740,8 +741,11 @@ class Chlorophyll_Network(Dgraph):
         #LHCII
         LHCII_POP = [p for p in POPULATION if p.Ptype =="LHCII"]
         
+        self.PSII_coordinates = [p.location.T.tolist()[0] for p in C2S2M2_POP+C2S2_POP]
         self.coordinates = [p.location.T.tolist()[0] for p in C2S2M2_POP+C2S2_POP+LHCII_POP]
         
+        
+        #go through the combinations of C2S2M2 and other complexes
         for c2s2m2 in C2S2M2_POP:
             
             C2S2M2_Chlorophylls = c2s2m2.bound_Chorophylls()
@@ -803,16 +807,39 @@ class Chlorophyll_Network(Dgraph):
                     d = np.min(self.distances(LHCII_Chlorophylls,LHCII_Chlorophylls_2))
                     if d <=threshold:
                         self.G.add_edge(self.node_num(lhcii.location.T.tolist()[0]),self.node_num(lhcii_2.location.T.tolist()[0]),weight=d)
-
-        
-
     
+        
     @staticmethod
     def distances(M1,M2):
         """returns a 1D matrix of distances between M1 and M2"""
         D = dist.cdist(M1.T,M2.T)
         return np.absolute(np.ndarray.flatten(D))
 
+
+
+## graph analysis functions
+def PSII_Connectivity(Antenna_Graph):
+        """Returns the average number PSII centres per cluster"""
+        DATA = {}
+        for i in Antenna_Graph.PSII_coordinates:
+            N = 1 # default if no other PSIIs connected
+            for j in Antenna_Graph.PSII_coordinates:
+                if (i != j) and ((i[0]-j[0])**2 + (i[1]-j[1])**2 <= Antenna_Graph.Distance_Cutoff**2):
+                    if Antenna_Graph.has_path(i,j):
+                        N += 1 # ie i and j are connected
+            if N not in DATA.keys():
+                DATA[N] = 0
+            DATA[N] += 1 # add one cluster of size N
+        
+        # calculate average cluster size
+        NClusterstimesSize = 0
+        Nclusters = 0
+        for n in DATA.keys():
+            NClusterstimesSize += DATA[n]
+            Nclusters += DATA[n]/float(n)
+        Avg_Cluster_Size = NClusterstimesSize/float(Nclusters)
+        return Avg_Cluster_Size
+            
 
 def Run_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
     ##parameters which describe the model
@@ -887,9 +914,10 @@ def Run_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
          #Analysis_Results = Analysis_Results.append({"PSII_avg_NN":NN_PSII,"LHCII_avg_NN":NN_LHCII,"PSI_avg_NN":NN_PSI,"LHCII_grana_fraction":LHCII_grana_fraction,"Grana_density":grana_density, "SL_density":sl_density},ignore_index=True)
     
     Antenna_graph = Chlorophyll_Network(POPULATION1)
-    Antenna_graph.Ddraw()
+    print(PSII_Connectivity(Antenna_graph))
+    #Antenna_graph.Ddraw()
     #Analysis_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/Results.csv")
-    print(Analysis_Results.tail())
+    #print(Analysis_Results.tail())
 
 
 
