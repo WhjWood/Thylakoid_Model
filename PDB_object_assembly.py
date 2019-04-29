@@ -1,5 +1,7 @@
 import bpy
 import math
+## WhjWood 26/02/19 
+## This program is used to construct models in Blender for publication images.
 
 def load_population(filename):
     """ loads in data from a file: x y theta"""
