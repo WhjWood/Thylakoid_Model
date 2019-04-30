@@ -807,6 +807,19 @@ class Chlorophyll_Network(Dgraph):
                     d = np.min(self.distances(LHCII_Chlorophylls,LHCII_Chlorophylls_2))
                     if d <=threshold:
                         self.G.add_edge(self.node_num(lhcii.location.T.tolist()[0]),self.node_num(lhcii_2.location.T.tolist()[0]),weight=d)
+            
+            for c2s2m2 in C2S2M2_POP:
+                    C2S2M2_Chlorophylls = c2s2m2.bound_Chorophylls()
+                    d = np.min(self.distances(LHCII_Chlorophylls,C2S2M2_Chlorophylls))
+                    if d <=threshold:
+                        self.G.add_edge(self.node_num(lhcii.location.T.tolist()[0]),self.node_num(c2s2m2.location.T.tolist()[0]),weight=d)
+
+            for c2s2 in C2S2_POP:
+                C2S2_Chlorophylls = c2s2.bound_Chorophylls()
+
+                d = np.min(self.distances(LHCII_Chlorophylls,C2S2_Chlorophylls))
+                if d <=threshold:
+                    self.G.add_edge(self.node_num(lhcii.location.T.tolist()[0]),self.node_num(c2s2.location.T.tolist()[0]),weight=d)
     
         
     @staticmethod
@@ -824,7 +837,8 @@ def PSII_Connectivity(Antenna_Graph):
         for i in Antenna_Graph.PSII_coordinates:
             N = 1 # default if no other PSIIs connected
             for j in Antenna_Graph.PSII_coordinates:
-                if (i != j) and ((i[0]-j[0])**2 + (i[1]-j[1])**2 <= Antenna_Graph.Distance_Cutoff**2):
+                if (i != j): # and ((i[0]-j[0])**2 + (i[1]-j[1])**2 <= Antenna_Graph.Distance_Cutoff**2):
+                    # I've removed the distance dependence to focus on topology
                     if Antenna_Graph.has_path(i,j):
                         N += 1 # ie i and j are connected
             if N not in DATA.keys():
@@ -839,7 +853,37 @@ def PSII_Connectivity(Antenna_Graph):
             Nclusters += DATA[n]/float(n)
         Avg_Cluster_Size = NClusterstimesSize/float(Nclusters)
         return Avg_Cluster_Size
-            
+
+def PSII_Antenna_size(Antenna_Graph,Population):
+    """Returns number of LHCIIs for each reaction centre"""
+    
+    Antenna_Sizes = []
+    for i in Population:
+        if i.Ptype == "C2S2M2" or i.Ptype == "C2S2":
+            i_coord = i.location.T.tolist()[0] # location of j
+            if i.Ptype == "C2S2M2":
+                N_C2S2M2 = 1
+                N_C2S2 = 0
+            else:
+                N_C2S2M2 = 0
+                N_C2S2 = 1
+                
+            N_LHCII = 0
+            for j in Population:
+                j_coord = j.location.T.tolist()[0] # location of j
+                if i_coord != j_coord: # and ((i_coord[0]-j_coord[0])**2 + (i_coord[1]-j_coord[1])**2 <= Antenna_Graph.Distance_Cutoff**2):
+                    # I've removed the distance dependence to focus on topology
+                    if Antenna_Graph.has_path(i_coord,j_coord) or Antenna_Graph.has_path(j_coord,i_coord):
+                        if j.Ptype == "C2S2M2":
+                            N_C2S2M2 += 1
+                        elif j.Ptype == "C2S2":
+                            N_C2S2 += 1
+                        elif j.Ptype == "LHCII":
+                            N_LHCII += 1
+            Antenna_Sizes.append(4*N_C2S2M2 + 2*N_C2S2 + N_LHCII)
+        
+    return np.mean(np.array(Antenna_Sizes))       
+                        
 
 def Run_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
     ##parameters which describe the model
@@ -914,7 +958,10 @@ def Run_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
          #Analysis_Results = Analysis_Results.append({"PSII_avg_NN":NN_PSII,"LHCII_avg_NN":NN_LHCII,"PSI_avg_NN":NN_PSI,"LHCII_grana_fraction":LHCII_grana_fraction,"Grana_density":grana_density, "SL_density":sl_density},ignore_index=True)
     
     Antenna_graph = Chlorophyll_Network(POPULATION1)
-    print(PSII_Connectivity(Antenna_graph))
+    AS = PSII_Antenna_size(Antenna_graph,POPULATION1)
+    CT = PSII_Connectivity(Antenna_graph)
+    print(AS, CT)
+    #print(PSII_Connectivity(Antenna_graph))
     #Antenna_graph.Ddraw()
     #Analysis_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/Results.csv")
     #print(Analysis_Results.tail())
