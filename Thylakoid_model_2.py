@@ -537,19 +537,12 @@ def Run_Simulation(GRANA_RADIUS=170,DATE="11_05_18",EXPERIMENT="FREE_LHCII",TMAX
         # Checkpoint saves are there to start again if code is interupted
         # after 10M iterations data is collected every 1000 iterations
         if (t%1000000==0) and (10000000>t>1): # saves every millionth iteration
-            pop1_file = open(Dir_Name+"/Data/POPULATION1_Checkpoint_"+str(t), 'wb')
-            pop2_file = open(Dir_Name+"/Data/POPULATION2_Checkpoint_"+str(t), 'wb')
-            pickle.dump(POPULATION1,pop1_file)
-            pickle.dump(POPULATION2,pop2_file)
-            pop1_file.close()
-            pop2_file.close()
+            Save_Population(POPULATION1, Dir_Name+"/Data/POPULATION1_Checkpoint_"+str(t))
+            Save_Population(POPULATION2, Dir_Name+"/Data/POPULATION2_Checkpoint_"+str(t))
+            
         elif (t>=10000000) and (t%1000==0):
-            pop1_file = open(Dir_Name+"/Data/POPULATION1_"+str(t), 'wb')
-            pop2_file = open(Dir_Name+"/Data/POPULATION2_"+str(t), 'wb')
-            pickle.dump(POPULATION1,pop1_file)
-            pickle.dump(POPULATION2,pop2_file)
-            pop1_file.close()
-            pop2_file.close()
+            Save_Population(POPULATION1, Dir_Name+"/Data/POPULATION1_"+str(t))
+            Save_Population(POPULATION2, Dir_Name+"/Data/POPULATION2_"+str(t))
             
             # Here I want to add a single file with all results in
             
@@ -714,7 +707,7 @@ class Dgraph:
 # Network classes for antenna analysis 
 class Chlorophyll_Network(Dgraph):
         
-    def __init__(self,POPULATION,threshold=5):
+    def __init__(self,POPULATION,threshold=1):
         #Node_list = coordinate_list(C2S2M2_POP+C2S2_POP+LHCII_POP)
         # import relevant modules
         import numpy as np
@@ -943,42 +936,43 @@ def Run_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
     print("Running Analysis of simulation "+EXPERIMENT+"_"+DATE)
     # The dataframe Analysis_Results contains results of all analyses
     Analysis_Results = pd.DataFrame(columns=["PSII_avg_NN","LHCII_avg_NN","PSI_avg_NN","LHCII_grana_fraction","Grana_density","SL_density"])
-    for t in range(9000000,10000000,10000): # data taken between 10 and 11 M in steps of 1k
+    for t in range(10000000,11000000,1000): # data taken between 10 and 11 M in steps of 1k
          #load the data from file
-         POPULATION1 = Load_Population(Dir_Name+"Population1_"+str(t))
+         POPULATION1 = Load_Population(Dir_Name+"POPULATION1_"+str(t))
          
          #run the analysis functions defined elsewhere
-         #NN_PSII = Nearest_Neighbour_Distances(POPULATION1, ["C2S2M2","C2S2"])
-         #NN_LHCII = Nearest_Neighbour_Distances(POPULATION1, ["LHCII"])
-         #NN_PSI = Nearest_Neighbour_Distances(POPULATION1, ["PSI"])
-         #LHCII_grana_fraction = LHCII_Localisation_Analysis(POPULATION1)
-         #grana_density, sl_density = Density_Analysis(POPULATION1)
+         NN_PSII = Nearest_Neighbour_Distances(POPULATION1, ["C2S2M2","C2S2"])
+         NN_LHCII = Nearest_Neighbour_Distances(POPULATION1, ["LHCII"])
+         NN_PSI = Nearest_Neighbour_Distances(POPULATION1, ["PSI"])
+         LHCII_grana_fraction = LHCII_Localisation_Analysis(POPULATION1)
+         grana_density, sl_density = Density_Analysis(POPULATION1)
          
          #add the results to the dataframe 
-         #Analysis_Results = Analysis_Results.append({"PSII_avg_NN":NN_PSII,"LHCII_avg_NN":NN_LHCII,"PSI_avg_NN":NN_PSI,"LHCII_grana_fraction":LHCII_grana_fraction,"Grana_density":grana_density, "SL_density":sl_density},ignore_index=True)
+         Analysis_Results = Analysis_Results.append({"PSII_avg_NN":NN_PSII,"LHCII_avg_NN":NN_LHCII,"PSI_avg_NN":NN_PSI,"LHCII_grana_fraction":LHCII_grana_fraction,"Grana_density":grana_density, "SL_density":sl_density},ignore_index=True)
     
     Antenna_graph = Chlorophyll_Network(POPULATION1)
     AS = PSII_Antenna_size(Antenna_graph,POPULATION1)
     CT = PSII_Connectivity(Antenna_graph)
     print(AS, CT)
     #print(PSII_Connectivity(Antenna_graph))
-    #Antenna_graph.Ddraw()
-    #Analysis_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/Results.csv")
+    Antenna_graph.Ddraw()
+    Analysis_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/Results.csv")
     #print(Analysis_Results.tail())
 
 
 
 #if __name__== '__main__':
 GRANA_SIZE = 170 # width of grana, nm.
-DATE = "25_04_19"  # a reference date in which the simulations are run.
-EXPERIMENT = "SI"   # a reference for which experiment is being run.
+DATE = "30_04_19"  # a reference date in which the simulations are run.
+EXPERIMENT = "RANDOM"   # a reference for which experiment is being run.
 Number_of_iterations = 11000001 # number of Monte Carlo steps, Note that data is only collected after 10M iterations.
-Stacking_Interaction_Energy = 4 # stacking interaction strength, kT (default = 4).
-LHCII_Binding_Interaction_Energy = 2 # intralayer LHCII interaction strength, kT (default = 2).
+Stacking_Interaction_Energy = 0 # stacking interaction strength, kT (default = 4).
+LHCII_Binding_Interaction_Energy = 0 # intralayer LHCII interaction strength, kT (default = 2).
 
 
 t0 = time.time()
-#OPULATION1, POPULATION2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy)
+POPULATION1, POPULATION2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy)
+
 Run_analysis(GRANA_SIZE,DATE,EXPERIMENT)
 print("Completed in ", time.time()-t0, "seconds")
 
