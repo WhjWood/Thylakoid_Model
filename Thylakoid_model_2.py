@@ -477,8 +477,10 @@ def Run_Simulation(GRANA_RADIUS=170,DATE="11_05_18",EXPERIMENT="FREE_LHCII",TMAX
 
     
     # loading in populations
-    POPULATION1 = pickle.load(open("Population1_initial", 'rb'))
-    POPULATION2 = pickle.load(open("Population2_initial", 'rb'))
+    #POPULATION1 = pickle.load(open("Population1_initial", 'rb'))
+    #POPULATION2 = pickle.load(open("Population2_initial", 'rb'))
+    POPULATION1 = Load_Population("POPULATION1_10000000")
+    POPULATION2 = Load_Population("POPULATION2_10000000")
     
     print("Model Initialised\n")
     # Create the directory for the experiment
@@ -516,7 +518,9 @@ def Run_Simulation(GRANA_RADIUS=170,DATE="11_05_18",EXPERIMENT="FREE_LHCII",TMAX
     X_array = np.random.random(Tmax)
     for t in np.arange(Tmax):
         if (t%1000000 == 0) and (t<10000000):
-            print("Equilibration "+str(t*(10/1000000))+"% complete")
+            print("Equilibration "+str(int(t*(10/1000000)))+"% complete")
+            print(" LHCII in grana = ",LHCII_Localisation_Analysis(POPULATION1),"/",LHCII_Localisation_Analysis(POPULATION2))
+            print(" LHCII NN = ",Nearest_Neighbour_Distances(POPULATION1, ['LHCII']),"/",Nearest_Neighbour_Distances(POPULATION2, ['LHCII']))
         elif t==10000000:
             print("Collecting data")
             
@@ -822,6 +826,76 @@ class Chlorophyll_Network(Dgraph):
         return np.absolute(np.ndarray.flatten(D))
 
 
+# Antenna network for PSI
+class PSI_Chlorophyll_Network(Dgraph):
+        
+    def __init__(self,POPULATION,threshold=1):
+        #Node_list = coordinate_list(C2S2M2_POP+C2S2_POP+LHCII_POP)
+        # import relevant modules
+        import numpy as np
+        import networkx as nx
+        import matplotlib.pyplot as plt
+
+        import scipy.spatial.distance as dist
+        
+        #instantiate the underlying nx graph
+        
+        
+        self.G = nx.Graph()
+        
+        self.Distance_Cutoff = 50 # Distance an exciton can travel before fluorescence
+        
+        
+        
+        #PSI
+        PSI_POP = [p for p in POPULATION if p.Ptype =="PSI"]
+        
+        #LHCII
+        LHCII_POP = [p for p in POPULATION if p.Ptype =="LHCII"]
+        
+        self.PSI_coordinates = [p.location.T.tolist()[0] for p in PSI_POP]
+
+        
+        
+        #go through the combinations of C2S2M2 and other complexes
+        for psi in PSI_POP:
+            
+            PSI_Chlorophylls = psi.bound_Chorophylls()
+ 
+            for lhcii in LHCII_POP:
+                LHCII_Chlorophylls = lhcii.bound_Chorophylls()
+
+                d = np.min(self.distances(PSI_Chlorophylls,LHCII_Chlorophylls))
+                if d <=threshold:
+                    self.G.add_edge(self.node_num(psi.location.T.tolist()[0]),self.node_num(lhcii.location.T.tolist()[0]),weight=d)
+
+        #LHCII
+        for lhcii in LHCII_POP:
+            LHCII_Chlorophylls = lhcii.bound_Chorophylls()
+            for lhcii_2 in LHCII_POP:
+                if lhcii.location.T.tolist()[0] != lhcii_2.location.T.tolist()[0]:
+                    LHCII_Chlorophylls_2 = lhcii_2.bound_Chorophylls()
+
+                    d = np.min(self.distances(LHCII_Chlorophylls,LHCII_Chlorophylls_2))
+                    if d <=threshold:
+                        self.G.add_edge(self.node_num(lhcii.location.T.tolist()[0]),self.node_num(lhcii_2.location.T.tolist()[0]),weight=d)
+            
+            for psi in PSI_POP:
+            
+                PSI_Chlorophylls = psi.bound_Chorophylls()
+                d = np.min(self.distances(LHCII_Chlorophylls,PSI_Chlorophylls))
+                if d <=threshold:
+                    self.G.add_edge(self.node_num(lhcii.location.T.tolist()[0]),self.node_num(psi.location.T.tolist()[0]),weight=d)
+
+    
+        
+    @staticmethod
+    def distances(M1,M2):
+        """returns a 1D matrix of distances between M1 and M2"""
+        D = dist.cdist(M1.T,M2.T)
+        return np.absolute(np.ndarray.flatten(D))
+
+
 
 ## graph analysis functions
 def PSII_Connectivity(Antenna_Graph):
@@ -877,6 +951,28 @@ def PSII_Antenna_size(Antenna_Graph,Population):
         
     return np.mean(np.array(Antenna_Sizes))       
                         
+def PSI_Antenna_size(PSI_Antenna_Graph,Population):
+    """Returns number of LHCIIs for each reaction centre"""
+    
+    Antenna_Sizes = []
+    for i in Population:
+        if i.Ptype == "PSI":
+            i_coord = i.location.T.tolist()[0] # location of j
+            N_PSI = 1
+                
+            N_LHCII = 0
+            for j in Population:
+                j_coord = j.location.T.tolist()[0] # location of j
+                if i_coord != j_coord: # and ((i_coord[0]-j_coord[0])**2 + (i_coord[1]-j_coord[1])**2 <= Antenna_Graph.Distance_Cutoff**2):
+                    # I've removed the distance dependence to focus on topology
+                    if PSI_Antenna_Graph.has_path(i_coord,j_coord) or PSI_Antenna_Graph.has_path(j_coord,i_coord):
+                        if j.Ptype == "PSI":
+                            N_PSI += 1
+                        elif j.Ptype == "LHCII":
+                            N_LHCII += 1
+            Antenna_Sizes.append(156*N_PSI + 42*N_LHCII)
+        
+    return np.mean(np.array(Antenna_Sizes))  
 
 def Run_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
     ##parameters which describe the model
@@ -959,11 +1055,108 @@ def Run_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
     Analysis_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/Results.csv")
     #print(Analysis_Results.tail())
 
+def Run_graph_antenna_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
+    ##parameters which describe the model
+    ##see Wood et al., 2019/2020 for more details
+    
+    
+    #the following are made global for use in analysis
+    global grana_radius
+    global NPSII
+    global NPSI
+    global grana_area
+    global stroma_area
+    global NC2S2M2
+    global NC2S2
+    global NB6F_grana
+    global NB6F_SL
+    global NATP
+    global NPSII_SL
+    global LHCII_per_RC
+    global Complexes
+    global Complexes_Chl 
+    
+    grana_radius = GRANA_RADIUS
+    PSI_PSII_ratio = 1
+    
+    NPSII = round(1.14*(10**(-3))*np.pi*(grana_radius**2))
+    NB6F = round(0.5*NPSII)
+    B6F_GRANA = 0.5 #fraction of b6f allocated to grana
+    NPSII_grana = round(NPSII-(NB6F*B6F_GRANA))
+    NPSII = 1.2*NPSII_grana
+    
+    NPSI= round(PSI_PSII_ratio*2*NPSII)
+    stroma_radius =  round(math.sqrt((NPSI/(math.pi*2.45*(10**(-3))))+(grana_radius**2)))
+    
+    grana_area = math.pi*(grana_radius**2)
+    stroma_area = math.pi*(stroma_radius**2)-grana_area
+    
+    NC2S2 = round(0.5*NPSII_grana) # % total PSII
+    NC2S2M2 = round(0.5*NPSII_grana) # % total PSII
+    LHCII_per_RC = 5
+    LHCII_grana = 0.7
+    NLHCIIg = round(LHCII_grana*(NPSII*2*LHCII_per_RC-(NC2S2*2+NC2S2M2*4)))
+    NB6F_grana = round(B6F_GRANA*NB6F)
+    
+    
+    NB6F_SL = round((1-B6F_GRANA)*NB6F)
+    NATP = round(0.7*2*NPSII)
+    NPSII_SL = round(0.2*NPSII_grana) #2x10% NPSII or 10% reaction centres
+    NLHCII_SL =  round((1-LHCII_grana)*(NPSII*2*LHCII_per_RC-(NC2S2*2+NC2S2M2*4)))
+    
+    
+    Complexes_Chl = pickle.load(open("Complexes_Chl.p",'rb')) # for antenna analysis
+    Complexes = pickle.load(open("Complexes.p", 'rb'))
+    
+    Dir_Name = "./"+EXPERIMENT+"_"+DATE+"/Data/" # directory where the data is
+    
+    print("Running Graph Antenna Analysis of simulation "+EXPERIMENT+"_"+DATE)
+    # The dataframe Analysis_Results contains results of all analyses
+    PSII_Antenna_Results = pd.DataFrame(columns=["1","2","3","4","5"])
+    PSII_Connectivity_Results = pd.DataFrame(columns=["1","2","3","4","5"])
+    PSI_Antenna_Results = pd.DataFrame(columns=["1","2","3","4","5"])
+    for t in range(10000000,11000000,1000): # data taken between 10 and 11 M in steps of 1k
+         #load the data from file
+         POPULATION1 = Load_Population(Dir_Name+"POPULATION1_"+str(t))
+         
+         #These distionaries store values for different thresolds before adding to data frame 
+         PSII_Ant = {}
+         PSII_Con = {}
+         PSI_Ant = {}
+         
+         #run the analysis functions defined elsewhere
+         
+         for THRESHOLD in [1,2,3,4,5]:
+            Antenna_graph = Chlorophyll_Network(POPULATION1,threshold=THRESHOLD)
+            
+            AS = PSII_Antenna_size(Antenna_graph,POPULATION1)
+            PSII_Ant[str(THRESHOLD)] = AS
+            
+            CT = PSII_Connectivity(Antenna_graph)
+            PSII_Con[str(THRESHOLD)] = CT
+            
+            PSI_Antenna_graph = PSI_Chlorophyll_Network(POPULATION1,threshold=THRESHOLD)
+            PSI_AS = PSII_Antenna_size(PSI_Antenna_graph,POPULATION1)
+            PSI_Ant[str(THRESHOLD)] = PSI_AS
+            
+         
+         #add the results to the dataframe 
+         PSII_Antenna_Results = PSII_Antenna_Results.append(PSII_Ant,ignore_index=True)
+         PSII_Connectivity_Results = PSII_Connectivity_Results.append(PSII_Con,ignore_index=True)
+         PSI_Antenna_Results = PSII_Antenna_Results.append(PSI_Ant,ignore_index=True)
+    
+
+
+    Antenna_graph.Ddraw()
+    PSII_Antenna_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/PSII_Antenna_Results.csv")
+    PSII_Connectivity_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/PSII_Connectivity_Results.csv")
+    PSI_Antenna_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/PSI_Antenna_Results.csv")
+
 
 
 #if __name__== '__main__':
 GRANA_SIZE = 170 # width of grana, nm.
-DATE = "30_04_19"  # a reference date in which the simulations are run.
+DATE = "09_05_19"  # a reference date in which the simulations are run.
 EXPERIMENT = "RANDOM"   # a reference for which experiment is being run.
 Number_of_iterations = 11000001 # number of Monte Carlo steps, Note that data is only collected after 10M iterations.
 Stacking_Interaction_Energy = 0 # stacking interaction strength, kT (default = 4).
@@ -974,6 +1167,7 @@ t0 = time.time()
 POPULATION1, POPULATION2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy)
 
 Run_analysis(GRANA_SIZE,DATE,EXPERIMENT)
+Run_graph_antenna_analysis(GRANA_SIZE,DATE,EXPERIMENT)
 print("Completed in ", time.time()-t0, "seconds")
 
 
