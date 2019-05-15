@@ -7,6 +7,6 @@ Simulates the interactions of PSII, LHCII and PSI in the thylakoid membrane.
 Parametrised using AFM,SIM and published data.
 
 To do:
-- add interactions between PSI and LHCII to mimic "state II"
-- add function to set up initial population
+- Test interactions between PSI and LHCII to mimic "state II"
+- Test function to set up initial population
 
