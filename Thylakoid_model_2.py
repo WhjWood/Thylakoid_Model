@@ -88,7 +88,7 @@ class Particle(object):
             pass
     
     def PSI_site(self):
-        return  self.rotate(self.location-PSI_LHCII,self.rotation)
+        return  self.rotate(self.location-Particle.PSI_LHCII,self.rotation)
     
     
     def bound_Chorophylls(self):
@@ -187,10 +187,7 @@ def Plot_Population(Population,DirName):
     plt.axis([-300,300,-300,300])
     plt.axis('equal')
     plt.axes().set_aspect('equal')
-    #plt.scatter(np.array(MC2S2M2[0,:]),np.array(MC2S2M2[1,:]),s=0.2)
-    #plt.scatter(np.array(MPSII[0,:]),np.array(MPSII[1,:]),s=0.2)
-    #plt.scatter(np.array(Mb6f_g[0,:]),np.array(Mb6f_g[1,:]),s=0.2)
-    #plt.scatter(np.array(MLHCII[0,:]),np.array(MLHCII[1,:]),s=0.2)
+
     plt.scatter(np.array(MPSII_4_plot[0,:]),np.array(MPSII_4_plot[1,:]),s=0.1,color='g')
     plt.scatter(np.array(MLHCII_4_plot[0,:]),np.array(MLHCII_4_plot[1,:]),s=0.1,color='c')
     plt.scatter(np.array(MPSI[0,:]),np.array(MPSI[1,:]),s=0.1,color='r')
@@ -318,7 +315,7 @@ def create_initial_population(GRANA_RADIUS): ### UNTESTED ###
     
     ## Grana particles
     
-    for Ptype in ["C2S2M2","C2S2","LHCII","B6F"]:
+    for Ptype in ["C2S2M2","C2S2","B6F","LHCII"]:
         print("Adding"+" "+Ptype+": "+str(N_Particles_grana[Ptype])+" particles into grana.")
         NParticles = 0
         while NParticles < N_Particles_grana[Ptype]:
@@ -333,26 +330,34 @@ def create_initial_population(GRANA_RADIUS): ### UNTESTED ###
             #coord = [np.matrix([[x],[y]]),0.0, np.random.random()*2*np.pi]                                                   
             
             if len(POPULATION)==0:#only boundaries taken into account
-                COLL = collision2(BOUNDARIES_LHCII,New_Particle.particle_matrix())
-                while COLL == True:
-                    COLL, New_Particle_2, bound = particle_step2(population_matrix(POPULATION),BOUNDARIES_LHCII,New_Particle)
-                    if bound == False:
+                COLL = collision3(BOUNDARIES_LHCII,New_Particle.Pmatrix)
+                sqr_dist = New_Particle.location[0,0]**2 + New_Particle.location[1,0]**2
+                while (COLL == True) or (sqr_dist>= grana_radius**2):
+                    coll2, bound, New_Particle_2  = particle_step2(np.matrix([[1000],[2000]]),BOUNDARIES_LHCII,New_Particle) # np.matrix([[1000],[2000]]) is a dummy population
+                    sqr_dist_2 = New_Particle_2.location[0,0]**2 + New_Particle_2.location[1,0]**2
+                    if sqr_dist_2 < grana_radius**2:
                         New_Particle = New_Particle_2
+                        COLL = coll2
+                    sqr_dist = New_Particle.location[0,0]**2 + New_Particle.location[1,0]**2
                     
             
             else:# other particles involved 
                 COLL = collision3(np.concatenate((population_matrix(POPULATION),BOUNDARIES_LHCII),axis =1),New_Particle.Pmatrix)
-                while COLL == True:
-                    COLL, New_Particle_2, bound = particle_step2(population_matrix(POPULATION),BOUNDARIES_LHCII,New_Particle)
-                    if bound == False:
+                sqr_dist = New_Particle.location[0,0]**2 + New_Particle.location[1,0]**2
+                while (COLL == True) or (sqr_dist>= grana_radius**2):
+                    coll2, bound, New_Particle_2  = particle_step2(population_matrix(POPULATION),BOUNDARIES_LHCII,New_Particle)
+                    sqr_dist_2 = New_Particle_2.location[0,0]**2 + New_Particle_2.location[1,0]**2
+                    if sqr_dist_2 < grana_radius**2:
                         New_Particle = New_Particle_2
+                        COLL = coll2
+                    sqr_dist = New_Particle.location[0,0]**2 + New_Particle.location[1,0]**2
             
             NParticles += 1
             POPULATION.append(New_Particle)
         
     ## Stromal lamellae particles
     
-    for Ptype in ["PSI", "LHCII", "B6F", "ATP", "PSII_mono"]:
+    for Ptype in ["PSI", "B6F", "LHCII",  "ATP", "PSII_mono"]:
         print("Adding"+" "+Ptype+": "+str(N_Particles_SL[Ptype])+" particles into stromal lamellae.")
         NParticles = 0
         while NParticles < N_Particles_SL[Ptype]:
@@ -361,7 +366,7 @@ def create_initial_population(GRANA_RADIUS): ### UNTESTED ###
             x = int(r*np.sin(theta))
             y = int(r*np.cos(theta))
         
-            while np.sqrt(x**2 + y**2) <= grana_radius or np.sqrt(x**2 + y**2) >= stroma_radius:
+            while (np.sqrt(x**2 + y**2) <= grana_radius) or (np.sqrt(x**2 + y**2) >= stroma_radius):
                 r = np.random.randint(grana_radius+1,stroma_radius-1)
                 theta = np.random.random()*2*np.pi
                 x = int(r*np.sin(theta))
@@ -369,21 +374,16 @@ def create_initial_population(GRANA_RADIUS): ### UNTESTED ###
             
             New_Particle = Particle(x,y,theta=0, particle_type=Ptype)
             #coord = [np.matrix([[x],[y]]),0.0, np.random.random()*2*np.pi]                                                   
-            
-            if len(POPULATION)==0:#only boundaries taken into account    
-                COLL = collision2(BOUNDARIES_LHCII,New_Particle.particle_matrix())
-                while COLL == True:
-                    COLL, New_Particle_2, bound = particle_step2(population_matrix(POPULATION),BOUNDARIES_LHCII,New_Particle)
-                    if bound == False:
-                        New_Particle = New_Particle_2
-                     
-            else:# other particles involved
-                COLL = collision3(np.concatenate((population_matrix(POPULATION),BOUNDARIES_LHCII),axis =1),New_Particle.Pmatrix)
-                while COLL == True:
-                    COLL, New_Particle_2, bound = particle_step2(population_matrix(POPULATION),BOUNDARIES_LHCII,New_Particle)
-                    if bound == False:
-                        New_Particle = New_Particle_2
-            
+            sqr_dist = New_Particle.location[0,0]**2 + New_Particle.location[1,0]**2
+            COLL = collision3(np.concatenate((population_matrix(POPULATION),BOUNDARIES_LHCII),axis =1),New_Particle.Pmatrix)
+            while COLL == True or (grana_radius**2 > sqr_dist) or (sqr_dist > stroma_radius**2):
+                coll2, bound, New_Particle_2 = particle_step2(population_matrix(POPULATION),BOUNDARIES_LHCII,New_Particle)
+                sqr_dist_2 = New_Particle_2.location[0,0]**2 + New_Particle_2.location[1,0]**2
+                if (grana_radius**2 < sqr_dist_2 < stroma_radius**2):
+                    New_Particle = New_Particle_2
+                    COLL = coll2
+                sqr_dist = New_Particle.location[0,0]**2 + New_Particle.location[1,0]**2
+        
             NParticles += 1
             POPULATION.append(New_Particle)
     
@@ -406,7 +406,7 @@ def particle_step2(POPULAT,BOUNDARIES,PARTICLE):
     #coord = [x0+np.matrix(random.choice([[0,1,0],[0,-1,0],[1,0,0],[-1,0,0],[0,0,1],[0,0,-1]])).T,(th0+random.choice([np.pi/12,-1*np.pi/12]))%2*np.pi,(th0+random.choice([np.pi/12,-1*np.pi/12]))%2*np.pi ] 
     COLL = collision3(np.concatenate((POPULAT,BOUNDARIES),axis =1),PARTICLE2.Pmatrix)
     BOUND = boundary_check(PARTICLE.Ptype,PARTICLE.location[0,0],dxdy[0,0],PARTICLE.location[1,0],dxdy[1,0])
-    return (COLL or BOUND), PARTICLE2, BOUND   
+    return COLL, BOUND, PARTICLE2  
 
 
 def time_step(Population1,Population2,L,BOUNDARIES,layer,current_energy):
@@ -419,7 +419,8 @@ def time_step(Population1,Population2,L,BOUNDARIES,layer,current_energy):
         other_population = Population1
     x = np.random.randint(0,L) # index of particle
     
-    coll, new_particle, bound = particle_step2(population_matrix(Population[0:x]+Population[x+1:]),BOUNDARIES,Population[x])
+    coll, bound, new_particle = particle_step2(population_matrix(Population[0:x]+Population[x+1:]),BOUNDARIES,Population[x])
+    coll = (bound or coll)
     # coll = collision?, bound = gone from one domain to another?
     if coll == False:
         new_energy = Hamiltonian(Population[0:x]+[new_particle]+Population[x+1:],other_population)
@@ -607,10 +608,7 @@ def Run_Simulation(GRANA_RADIUS=170,DATE="11_05_18",EXPERIMENT="FREE_LHCII",TMAX
     Pr_ATP = 0.67
     Pr_PSI = 0.17
     
-    
-
-    
-    
+ 
     # energy parameters
     global LHCII_radius
     global interaction_radius
@@ -650,8 +648,8 @@ def Run_Simulation(GRANA_RADIUS=170,DATE="11_05_18",EXPERIMENT="FREE_LHCII",TMAX
     # loading in populations
     #POPULATION1 = pickle.load(open("Population1_initial", 'rb'))
     #POPULATION2 = pickle.load(open("Population2_initial", 'rb'))
-    POPULATION1 = Load_Population("POPULATION1_10000000")
-    POPULATION2 = Load_Population("POPULATION2_10000000")
+    POPULATION1 = Load_Population("Initial/POPULATION_initial")
+    POPULATION2 = Load_Population("Initial/POPULATION_initial")
     
     print("Model Initialised. Running Simulation\n")
     # Create the directory for the experiment
@@ -753,25 +751,9 @@ def LHCII_Localisation_Analysis(POPULATION):
     NLHCII_grana = len([i for i in LHCII_locations if (i[0]**2 + i[1]**2 <= grana_radius**2)])
     NLHCII_sl = len([j for j in LHCII_locations if (j[0]**2 + j[1]**2 > grana_radius**2)])
         
-    NC2S2M2 = len([x for x in POPULATION if x.Ptype == "C2S2M2"])
-    NC2S2 = len([x for x in POPULATION if x.Ptype == "C2S2"])
     
-    Fraction_LHCII_in_grana = float(NLHCII_grana + 4*NC2S2M2 + 2*NC2S2)/(NLHCII_sl+NLHCII_grana + 4*NC2S2M2 + 2*NC2S2)
+    Fraction_LHCII_in_grana = float(NLHCII_grana)/(NLHCII_sl+NLHCII_grana)
     return Fraction_LHCII_in_grana
-    
-# def Density_Analysis(POPULATION):
-#     """Returns the area fraction of protein in the grana and the stromal lamellae
-#     This way of calculating underestimates density.
-#     In future use LHCII fraction"""
-#     M = population_matrix(POPULATION)
-#     distances_from_centre = distances(M,np.matrix([[0],[0]]))
-#     Ngrana = np.sum(distances_from_centre<=grana_radius) # check this makes a mask
-#     Nsl = np.sum(distances_from_centre>grana_radius) # check this makes a mask
-#     
-#     grana_density = float(Ngrana)/grana_area 
-#     sl_density = float(Nsl)/stroma_area
-#     
-#     return grana_density, sl_density
 
 def Density_Analysis(POPULATION):
     """Returns the area fraction of protein in the grana and the stromal lamellae"""
@@ -1377,12 +1359,13 @@ if __name__== '__main__':
     t0 = time.time()
     GRANA_SIZE = 170 # width of grana, nm.
     Number_of_iterations = 11000001 # number of Monte Carlo steps, Note that data is only collected after 10M iterations.
-    DATE = "09_05_19"  # a reference date in which the simulations are run.
+    DATE = "19_05_19"  # a reference date in which the simulations are run.
     
-    create_initial_population(GRANA_SIZE) # optional usually
+    #create_initial_population(GRANA_SIZE) # optional usually
+    #print("Time elapsed ", (time.time()-t0)/3600.0, "hours")
     
-    """
-    ###Random Simulation###
+    
+    ###Test Simulation###
     
     EXPERIMENT = "RANDOM"   # a reference for which experiment is being run.
     Stacking_Interaction_Energy = 0 # stacking interaction strength, kT (default = 4).
@@ -1391,11 +1374,12 @@ if __name__== '__main__':
     
 
     POPULATION1, POPULATION2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy,PSI_interaction_energy)
+    print("Time elapsed ", (time.time()-t0)/3600.0, "hours")
+    
     Run_analysis(GRANA_SIZE,DATE,EXPERIMENT)
+    print("Time elapsed ", (time.time()-t0)/3600.0, "hours")
+    
     Run_graph_antenna_analysis(GRANA_SIZE,DATE,EXPERIMENT)
+      
+    print("Completed in ", (time.time()-t0)/3600.0, "hours")
     
-    """
-    print("Completed in ", time.time()-t0, "seconds")
-    
-    
-    plt.show()
