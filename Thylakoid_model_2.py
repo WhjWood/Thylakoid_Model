@@ -425,7 +425,7 @@ def time_step(Population1,Population2,L,BOUNDARIES,layer,current_energy):
     if coll == False:
         new_energy = Hamiltonian(Population[0:x]+[new_particle]+Population[x+1:],other_population)
         if ((new_particle.Ptype =="C2S2M2") or (new_particle.Ptype =="C2S2") or (new_particle.Ptype =="LHCII")):
-            dE = new_energy - current_energy # change in energy
+            dE =  current_energy - new_energy # change in energy
         else:
             dE=0
         
@@ -648,8 +648,8 @@ def Run_Simulation(GRANA_RADIUS=170,DATE="11_05_18",EXPERIMENT="FREE_LHCII",TMAX
     # loading in populations
     #POPULATION1 = pickle.load(open("Population1_initial", 'rb'))
     #POPULATION2 = pickle.load(open("Population2_initial", 'rb'))
-    POPULATION1 = Load_Population("Initial/POPULATION_initial")
-    POPULATION2 = Load_Population("Initial/POPULATION_initial")
+    POPULATION1 = Load_Population("Initial/POPULATION1_random")
+    POPULATION2 = Load_Population("Initial/POPULATION2_random")
     
     print("Model Initialised. Running Simulation\n")
     # Create the directory for the experiment
@@ -1359,7 +1359,7 @@ if __name__== '__main__':
     t0 = time.time()
     GRANA_SIZE = 170 # width of grana, nm.
     Number_of_iterations = 11000001 # number of Monte Carlo steps, Note that data is only collected after 10M iterations.
-    DATE = "19_05_19"  # a reference date in which the simulations are run.
+    DATE = "23_05_19"  # a reference date in which the simulations are run.
     
     #create_initial_population(GRANA_SIZE) # optional usually
     #print("Time elapsed ", (time.time()-t0)/3600.0, "hours")
@@ -1367,9 +1367,9 @@ if __name__== '__main__':
     
     ###Test Simulation###
     
-    EXPERIMENT = "RANDOM"   # a reference for which experiment is being run.
-    Stacking_Interaction_Energy = 0 # stacking interaction strength, kT (default = 4).
-    LHCII_Binding_Interaction_Energy = 0 # intralayer LHCII interaction strength, kT (default = 2).
+    EXPERIMENT = "SI"   # a reference for which experiment is being run.
+    Stacking_Interaction_Energy = 4 # stacking interaction strength, kT (default = 4).
+    LHCII_Binding_Interaction_Energy = 2 # intralayer LHCII interaction strength, kT (default = 2).
     PSI_interaction_energy = 0 # PSI - LHCII interaction strength, kT (default = 0, SII = 2).
     
 
