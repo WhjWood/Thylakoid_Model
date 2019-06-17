@@ -228,7 +228,7 @@ def pdb_to_matrix(file_name):
     return (X-X.mean(1)).astype(int)
 
 
-def create_initial_population(GRANA_RADIUS): ### UNTESTED ###
+def create_initial_population(GRANA_RADIUS): 
     """Creates a population and returns list of Particle instances"""
     
     print("Creating initial Population.\n")
@@ -387,7 +387,7 @@ def create_initial_population(GRANA_RADIUS): ### UNTESTED ###
             NParticles += 1
             POPULATION.append(New_Particle)
     
-    Save_Population(POPULATION, Dir_Name+"/POPULATION_initial")
+    Save_Population(POPULATION, Dir_Name+"/POPULATION_initial_"+str(grana_radius))
     Plot_Population(POPULATION,Dir_Name+"/POPULATION_initial_plot")
     print("Created initial Population.\n")        
     return POPULATION
@@ -648,8 +648,19 @@ def Run_Simulation(GRANA_RADIUS=170,DATE="11_05_18",EXPERIMENT="FREE_LHCII",TMAX
     # loading in populations
     #POPULATION1 = pickle.load(open("Population1_initial", 'rb'))
     #POPULATION2 = pickle.load(open("Population2_initial", 'rb'))
-    POPULATION1 = Load_Population("Initial/POPULATION1_random")
-    POPULATION2 = Load_Population("Initial/POPULATION2_random")
+    
+    #grana size = 170
+    if grana_radius == 170:
+        POPULATION1 = Load_Population("Initial/POPULATION1_random_170")
+        POPULATION2 = Load_Population("Initial/POPULATION2_random_170")
+    elif grana_radius == 190:#grana size = 190
+        POPULATION1 = Load_Population("Initial/POPULATION1_random_190")
+        POPULATION2 = Load_Population("Initial/POPULATION2_random_190")
+    else:
+        print("Incorrect grana size")
+        print("Aborting script")
+        import sys
+        sys.exit()
     
     print("Model Initialised. Running Simulation\n")
     # Create the directory for the experiment
@@ -1306,7 +1317,7 @@ def Run_graph_antenna_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
             PSII_Con[str(THRESHOLD)] = CT
             
             PSI_Antenna_graph = PSI_Chlorophyll_Network(POPULATION1,threshold=THRESHOLD)
-            PSI_AS = PSII_Antenna_size(PSI_Antenna_graph,POPULATION1)
+            PSI_AS = PSI_Antenna_size(PSI_Antenna_graph,POPULATION1)
             PSI_Ant[str(THRESHOLD)] = PSI_AS
             
          
@@ -1336,7 +1347,7 @@ def Run_graph_antenna_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
             PSII_Con[str(THRESHOLD)] = CT
             
             PSI_Antenna_graph = PSI_Chlorophyll_Network(POPULATION2,threshold=THRESHOLD)
-            PSI_AS = PSII_Antenna_size(PSI_Antenna_graph,POPULATION2)
+            PSI_AS = PSI_Antenna_size(PSI_Antenna_graph,POPULATION2)
             PSI_Ant[str(THRESHOLD)] = PSI_AS
             
          
@@ -1357,9 +1368,9 @@ def Run_graph_antenna_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
 if __name__== '__main__':
     # generally constants
     t0 = time.time()
-    GRANA_SIZE = 170 # width of grana, nm.
+    GRANA_SIZE = 190 # width of grana, nm.
     Number_of_iterations = 11000001 # number of Monte Carlo steps, Note that data is only collected after 10M iterations.
-    DATE = "23_05_19"  # a reference date in which the simulations are run.
+    DATE = "06_06_19"  # a reference date in which the simulations are run.
     
     #create_initial_population(GRANA_SIZE) # optional usually
     #print("Time elapsed ", (time.time()-t0)/3600.0, "hours")
@@ -1367,7 +1378,7 @@ if __name__== '__main__':
     
     ###Test Simulation###
     
-    EXPERIMENT = "SI"   # a reference for which experiment is being run.
+    EXPERIMENT = "SI_190"   # a reference for which experiment is being run.
     Stacking_Interaction_Energy = 4 # stacking interaction strength, kT (default = 4).
     LHCII_Binding_Interaction_Energy = 2 # intralayer LHCII interaction strength, kT (default = 2).
     PSI_interaction_energy = 0 # PSI - LHCII interaction strength, kT (default = 0, SII = 2).
