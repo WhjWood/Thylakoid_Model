@@ -88,7 +88,7 @@ class Particle(object):
             pass
     
     def PSI_site(self):
-        return  self.rotate(self.location-Particle.PSI_LHCII,self.rotation)
+        return  self.rotate(self.rotation,Particle.PSI_LHCII)+self.location
     
     
     def bound_Chorophylls(self):
@@ -752,7 +752,7 @@ def Nearest_Neighbour_Distances(POPULATION, ptypes):
             if P1 != P2:
                 Sqr_Distances.append((P1[0]-P2[0])**2 + (P1[1]-P2[1])**2)
         Nearest_Neighbours.append(np.sqrt(np.min(Sqr_Distances)))
-    return np.mean(np.array(Nearest_Neighbours))
+    return Nearest_Neighbours
 
 
 def LHCII_Localisation_Analysis(POPULATION):
@@ -1201,15 +1201,21 @@ def Run_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
     print("Running Analysis of simulation "+EXPERIMENT+"_"+DATE)
     # The dataframe Analysis_Results contains results of all analyses
     Analysis_Results = pd.DataFrame(columns=["PSII_avg_NN","LHCII_avg_NN","PSI_avg_NN","LHCII_grana_fraction","Grana_density","SL_density"])
+    
+    #Lists to hold the Nearest neighbour distribution data
+    PSII_NN = []
+    LHCII_NN = []
+    PSI_NN = []
+    
     for t in range(10000000,11000000,2000): # data taken between 10 and 11 M in steps of 2k
          ## Population1##
          #load the data from file
          POPULATION1 = Load_Population(Dir_Name+"POPULATION1_"+str(t))
          
          #run the analysis functions defined elsewhere
-         NN_PSII = Nearest_Neighbour_Distances(POPULATION1, ["C2S2M2","C2S2"])
-         NN_LHCII = Nearest_Neighbour_Distances(POPULATION1, ["LHCII"])
-         NN_PSI = Nearest_Neighbour_Distances(POPULATION1, ["PSI"])
+         NN_PSII = np.mean(np.array(Nearest_Neighbour_Distances(POPULATION1, ["C2S2M2","C2S2"])))
+         NN_LHCII = np.mean(np.array(Nearest_Neighbour_Distances(POPULATION1, ["LHCII"])))
+         NN_PSI = np.mean(np.array(Nearest_Neighbour_Distances(POPULATION1, ["PSI"])))
          LHCII_grana_fraction = LHCII_Localisation_Analysis(POPULATION1)
          grana_density, sl_density = Density_Analysis(POPULATION1)
          
@@ -1221,17 +1227,31 @@ def Run_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
          POPULATION2 = Load_Population(Dir_Name+"POPULATION2_"+str(t))
          
          #run the analysis functions defined elsewhere
-         NN_PSII = Nearest_Neighbour_Distances(POPULATION2, ["C2S2M2","C2S2"])
-         NN_LHCII = Nearest_Neighbour_Distances(POPULATION2, ["LHCII"])
-         NN_PSI = Nearest_Neighbour_Distances(POPULATION2, ["PSI"])
+         NN_PSII = np.mean(np.array(Nearest_Neighbour_Distances(POPULATION2, ["C2S2M2","C2S2"])))
+         NN_LHCII = np.mean(np.array(Nearest_Neighbour_Distances(POPULATION2, ["LHCII"])))
+         NN_PSI = np.mean(np.array(Nearest_Neighbour_Distances(POPULATION2, ["PSI"])))
          LHCII_grana_fraction = LHCII_Localisation_Analysis(POPULATION2)
          grana_density, sl_density = Density_Analysis(POPULATION2)
          
          #add the results to the dataframe 
          Analysis_Results = Analysis_Results.append({"PSII_avg_NN":NN_PSII,"LHCII_avg_NN":NN_LHCII,"PSI_avg_NN":NN_PSI,"LHCII_grana_fraction":LHCII_grana_fraction,"Grana_density":grana_density, "SL_density":sl_density},ignore_index=True)
-    
+         
+         # Need a few whole NN datasets for the NN distributions
+         
+         if t%200000 == 0: # far too many data points to use all
+             PSII_NN += Nearest_Neighbour_Distances(POPULATION1, ["C2S2M2","C2S2"])
+             PSII_NN += Nearest_Neighbour_Distances(POPULATION2, ["C2S2M2","C2S2"])
+             
+             LHCII_NN += Nearest_Neighbour_Distances(POPULATION1, ["LHCII"])
+             LHCII_NN += Nearest_Neighbour_Distances(POPULATION2, ["LHCII"])
+             
+             PSI_NN += Nearest_Neighbour_Distances(POPULATION1, ["PSI"])
+             PSI_NN += Nearest_Neighbour_Distances(POPULATION2, ["PSI"])
 
     Analysis_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/Results.csv")
+    
+    NN_results = pd.DataFrame({"PSII":PSII_NN,"LHCII":LHCII_NN,"PSI":PSI_NN})
+    NN_results.to_csv("./"+EXPERIMENT+"_"+DATE+"/Nearest_Neighbour_Results.csv")
     #print(Analysis_Results.tail())
 
 def Run_graph_antenna_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
@@ -1324,7 +1344,7 @@ def Run_graph_antenna_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
          #add the results to the dataframe 
          PSII_Antenna_Results = PSII_Antenna_Results.append(PSII_Ant,ignore_index=True)
          PSII_Connectivity_Results = PSII_Connectivity_Results.append(PSII_Con,ignore_index=True)
-         PSI_Antenna_Results = PSII_Antenna_Results.append(PSI_Ant,ignore_index=True)
+         PSI_Antenna_Results = PSI_Antenna_Results.append(PSI_Ant,ignore_index=True)
          
          ##Population2
          #load the data from file
@@ -1354,7 +1374,7 @@ def Run_graph_antenna_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
          #add the results to the dataframe 
          PSII_Antenna_Results = PSII_Antenna_Results.append(PSII_Ant,ignore_index=True)
          PSII_Connectivity_Results = PSII_Connectivity_Results.append(PSII_Con,ignore_index=True)
-         PSI_Antenna_Results = PSII_Antenna_Results.append(PSI_Ant,ignore_index=True)
+         PSI_Antenna_Results = PSI_Antenna_Results.append(PSI_Ant,ignore_index=True)
     
 
 
@@ -1368,9 +1388,9 @@ def Run_graph_antenna_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
 if __name__== '__main__':
     # generally constants
     t0 = time.time()
-    GRANA_SIZE = 190 # width of grana, nm.
+    GRANA_SIZE = 170 # width of grana, nm.
     Number_of_iterations = 11000001 # number of Monte Carlo steps, Note that data is only collected after 10M iterations.
-    DATE = "06_06_19"  # a reference date in which the simulations are run.
+    DATE = "17_06_19"  # a reference date in which the simulations are run.
     
     #create_initial_population(GRANA_SIZE) # optional usually
     #print("Time elapsed ", (time.time()-t0)/3600.0, "hours")
@@ -1378,10 +1398,10 @@ if __name__== '__main__':
     
     ###Test Simulation###
     
-    EXPERIMENT = "SI_190"   # a reference for which experiment is being run.
-    Stacking_Interaction_Energy = 4 # stacking interaction strength, kT (default = 4).
-    LHCII_Binding_Interaction_Energy = 2 # intralayer LHCII interaction strength, kT (default = 2).
-    PSI_interaction_energy = 0 # PSI - LHCII interaction strength, kT (default = 0, SII = 2).
+    EXPERIMENT = "SII"   # a reference for which experiment is being run.
+    Stacking_Interaction_Energy = 0 # stacking interaction strength, kT (default = 4).
+    LHCII_Binding_Interaction_Energy = 0 # intralayer LHCII interaction strength, kT (default = 2).
+    PSI_interaction_energy = 2 # PSI - LHCII interaction strength, kT (default = 0, SII = 2).
     
 
     POPULATION1, POPULATION2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy,PSI_interaction_energy)
