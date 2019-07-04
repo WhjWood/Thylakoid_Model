@@ -498,7 +498,7 @@ def boundary_check(Ptype,x,dx,y,dy):
     else:
         return False
 
-# This function cannot be jit compiled right now
+
 def PSII_Hamiltonian(Population1,Population2):
     LHCIIs_Layer1 = np.concatenate(tuple(p.bound_LHCII() for p in Population1 if (p.Ptype=="C2S2M2") or (p.Ptype=="C2S2") or (p.Ptype=="LHCII")), axis=1)
     LHCIIs_Layer2 = np.concatenate(tuple(p.bound_LHCII() for p in Population1 if (p.Ptype=="C2S2M2") or (p.Ptype=="C2S2") or (p.Ptype=="LHCII")), axis=1)
@@ -1139,7 +1139,7 @@ def PSI_Antenna_size(PSI_Antenna_Graph,Population):
                             N_PSI += 1
                         elif j.Ptype == "LHCII":
                             N_LHCII += 1
-            Antenna_Sizes.append(156*N_PSI + 42*N_LHCII)
+            Antenna_Sizes.append(N_LHCII)
         
     return np.mean(np.array(Antenna_Sizes))  
 
@@ -1204,6 +1204,7 @@ def Run_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
     
     #Lists to hold the Nearest neighbour distribution data
     PSII_NN = []
+    PSII_B6F_NN = []
     LHCII_NN = []
     PSI_NN = []
     
@@ -1238,9 +1239,13 @@ def Run_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
          
          # Need a few whole NN datasets for the NN distributions
          
-         if t%200000 == 0: # far too many data points to use all
+         if t%50000 == 0: # far too many data points to use all
              PSII_NN += Nearest_Neighbour_Distances(POPULATION1, ["C2S2M2","C2S2"])
              PSII_NN += Nearest_Neighbour_Distances(POPULATION2, ["C2S2M2","C2S2"])
+             
+             PSII_B6F_NN += Nearest_Neighbour_Distances(POPULATION1, ["C2S2M2","C2S2","B6F"])
+             PSII_B6F_NN += Nearest_Neighbour_Distances(POPULATION2, ["C2S2M2","C2S2","B6F"])
+             
              
              LHCII_NN += Nearest_Neighbour_Distances(POPULATION1, ["LHCII"])
              LHCII_NN += Nearest_Neighbour_Distances(POPULATION2, ["LHCII"])
@@ -1250,11 +1255,13 @@ def Run_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
 
     Analysis_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/Results.csv")
     
-    NN_results = pd.DataFrame({"PSII":PSII_NN,"LHCII":LHCII_NN,"PSI":PSI_NN})
+    # the nearest neighbour results need to be cut to the same length
+    N_results = min([len(PSII_NN),len(LHCII_NN),len(PSII_B6F_NN),len(PSI_NN)]) - 1
+    NN_results = pd.DataFrame({"PSII":PSII_NN[:N_results],"PSII_B6F":PSII_B6F_NN[:N_results],"LHCII":LHCII_NN[:N_results],"PSI":PSI_NN[:N_results]})
     NN_results.to_csv("./"+EXPERIMENT+"_"+DATE+"/Nearest_Neighbour_Results.csv")
     #print(Analysis_Results.tail())
 
-def Run_graph_antenna_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
+def Run_graph_antenna_analysis(GRANA_RADIUS,DATE,EXPERIMENT, PSII=True, PSI=True):
     ##parameters which describe the model
     ##see Wood et al., 2019/2020 for more details
     
@@ -1311,9 +1318,9 @@ def Run_graph_antenna_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
     
     print("Running Graph Antenna Analysis of simulation "+EXPERIMENT+"_"+DATE)
     # The dataframe Analysis_Results contains results of all analyses
-    PSII_Antenna_Results = pd.DataFrame(columns=["1","2","3","4","5"])
-    PSII_Connectivity_Results = pd.DataFrame(columns=["1","2","3","4","5"])
-    PSI_Antenna_Results = pd.DataFrame(columns=["1","2","3","4","5"])
+    PSII_Antenna_Results = pd.DataFrame(columns=["1","2","3","4","5","10"])
+    PSII_Connectivity_Results = pd.DataFrame(columns=["1","2","3","4","5","10"])
+    PSI_Antenna_Results = pd.DataFrame(columns=["1","2","3","4","5","10"])
     for t in range(10000000,11000000,20000): # data taken between 10 and 11 M in steps of 10k (less than other analysis because takes longer)
          
          ##Population1
@@ -1327,24 +1334,28 @@ def Run_graph_antenna_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
          
          #run the analysis functions defined elsewhere
          
-         for THRESHOLD in [1,2,3,4,5]:
-            Antenna_graph = Chlorophyll_Network(POPULATION1,threshold=THRESHOLD)
-            
-            AS = PSII_Antenna_size(Antenna_graph,POPULATION1)
-            PSII_Ant[str(THRESHOLD)] = AS
-            
-            CT = PSII_Connectivity(Antenna_graph)
-            PSII_Con[str(THRESHOLD)] = CT
-            
-            PSI_Antenna_graph = PSI_Chlorophyll_Network(POPULATION1,threshold=THRESHOLD)
-            PSI_AS = PSI_Antenna_size(PSI_Antenna_graph,POPULATION1)
-            PSI_Ant[str(THRESHOLD)] = PSI_AS
-            
+         for THRESHOLD in [1,2,3,4,5,10]:
+             if PSII == True:
+                 Antenna_graph = Chlorophyll_Network(POPULATION1,threshold=THRESHOLD)
+                
+                 AS = PSII_Antenna_size(Antenna_graph,POPULATION1)
+                 PSII_Ant[str(THRESHOLD)] = AS
+                
+                 CT = PSII_Connectivity(Antenna_graph)
+                 PSII_Con[str(THRESHOLD)] = CT
+             
+             if PSI == True:
+                 PSI_Antenna_graph = PSI_Chlorophyll_Network(POPULATION1,threshold=THRESHOLD)
+                 PSI_AS = PSI_Antenna_size(PSI_Antenna_graph,POPULATION1)
+                 PSI_Ant[str(THRESHOLD)] = PSI_AS
+                
          
-         #add the results to the dataframe 
-         PSII_Antenna_Results = PSII_Antenna_Results.append(PSII_Ant,ignore_index=True)
-         PSII_Connectivity_Results = PSII_Connectivity_Results.append(PSII_Con,ignore_index=True)
-         PSI_Antenna_Results = PSI_Antenna_Results.append(PSI_Ant,ignore_index=True)
+         #add the results to the dataframe
+         if PSII == True:
+            PSII_Antenna_Results = PSII_Antenna_Results.append(PSII_Ant,ignore_index=True)
+            PSII_Connectivity_Results = PSII_Connectivity_Results.append(PSII_Con,ignore_index=True)
+         if PSI == True:
+            PSI_Antenna_Results = PSI_Antenna_Results.append(PSI_Ant,ignore_index=True)
          
          ##Population2
          #load the data from file
@@ -1357,31 +1368,37 @@ def Run_graph_antenna_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
          
          #run the analysis functions defined elsewhere
          
-         for THRESHOLD in [1,2,3,4,5]:
-            Antenna_graph = Chlorophyll_Network(POPULATION2,threshold=THRESHOLD)
-            
-            AS = PSII_Antenna_size(Antenna_graph,POPULATION2)
-            PSII_Ant[str(THRESHOLD)] = AS
-            
-            CT = PSII_Connectivity(Antenna_graph)
-            PSII_Con[str(THRESHOLD)] = CT
-            
-            PSI_Antenna_graph = PSI_Chlorophyll_Network(POPULATION2,threshold=THRESHOLD)
-            PSI_AS = PSI_Antenna_size(PSI_Antenna_graph,POPULATION2)
-            PSI_Ant[str(THRESHOLD)] = PSI_AS
+         for THRESHOLD in [1,2,3,4,5,10]:
+             if PSII == True:
+                 Antenna_graph = Chlorophyll_Network(POPULATION2,threshold=THRESHOLD)
+                
+                 AS = PSII_Antenna_size(Antenna_graph,POPULATION2)
+                 PSII_Ant[str(THRESHOLD)] = AS
+                
+                 CT = PSII_Connectivity(Antenna_graph)
+                 PSII_Con[str(THRESHOLD)] = CT
+                 
+             if PSI == True:
+                 PSI_Antenna_graph = PSI_Chlorophyll_Network(POPULATION2,threshold=THRESHOLD)
+                 PSI_AS = PSI_Antenna_size(PSI_Antenna_graph,POPULATION2)
+                 PSI_Ant[str(THRESHOLD)] = PSI_AS
             
          
-         #add the results to the dataframe 
-         PSII_Antenna_Results = PSII_Antenna_Results.append(PSII_Ant,ignore_index=True)
-         PSII_Connectivity_Results = PSII_Connectivity_Results.append(PSII_Con,ignore_index=True)
-         PSI_Antenna_Results = PSI_Antenna_Results.append(PSI_Ant,ignore_index=True)
+         #add the results to the dataframe
+         if PSII == True:
+            PSII_Antenna_Results = PSII_Antenna_Results.append(PSII_Ant,ignore_index=True)
+            PSII_Connectivity_Results = PSII_Connectivity_Results.append(PSII_Con,ignore_index=True)
+         if PSI == True:
+            PSI_Antenna_Results = PSI_Antenna_Results.append(PSI_Ant,ignore_index=True)
     
 
 
-    Antenna_graph.Ddraw()
-    PSII_Antenna_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/PSII_Antenna_Results.csv")
-    PSII_Connectivity_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/PSII_Connectivity_Results.csv")
-    PSI_Antenna_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/PSI_Antenna_Results.csv")
+    
+    if PSII == True:
+        PSII_Antenna_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/PSII_Antenna_Results.csv")
+        PSII_Connectivity_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/PSII_Connectivity_Results.csv")
+    if PSI == True:
+        PSI_Antenna_Results.to_csv("./"+EXPERIMENT+"_"+DATE+"/PSI_Antenna_Results.csv")
 
 
 
@@ -1404,13 +1421,13 @@ if __name__== '__main__':
     PSI_interaction_energy = 2 # PSI - LHCII interaction strength, kT (default = 0, SII = 2).
     
 
-    POPULATION1, POPULATION2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy,PSI_interaction_energy)
+    #POPULATION1, POPULATION2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy,PSI_interaction_energy)
     print("Time elapsed ", (time.time()-t0)/3600.0, "hours")
     
     Run_analysis(GRANA_SIZE,DATE,EXPERIMENT)
     print("Time elapsed ", (time.time()-t0)/3600.0, "hours")
     
-    Run_graph_antenna_analysis(GRANA_SIZE,DATE,EXPERIMENT)
+    #Run_graph_antenna_analysis(GRANA_SIZE,DATE,EXPERIMENT,PSII=False,PSI=True)
       
     print("Completed in ", (time.time()-t0)/3600.0, "hours")
     
