@@ -6,11 +6,12 @@ Main code in Thylakoid_model_2.py
 Simulates the interactions of PSII, LHCII and PSI in the thylakoid membrane.
 Parametrised using AFM,SIM and published data.
 
-###How to use Thylakoid_model_2.py###
+
+     How to use Thylakoid_model_2.p
 
 in the if __name__== '__main__' clause (from line 1412):
 
-#set up the constants:#
+set up the constants:
 
 GRANA_SIZE = 170 # width of grana, nm.
 - there are premade model files for thylakoids with 170 nm and 190 nm. Therefore, these number should be used.
@@ -29,6 +30,30 @@ LHCII_Binding_Interaction_Energy = 0 # intralayer LHCII interaction strength, kT
 PSI_interaction_energy = 0 # PSI - LHCII interaction strength, kT (default = 0, SII = 2).
 
 - These are the interaction strengths for the Monte Carlo simulation.
+
+
+Running the simulation
+
+POPULATION1, POPULATION2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy,PSI_interaction_energy)
+- This runs the simulation using the constants defined above.
+- 10^6 Monte Carlo steps are used for equilibration before data is collected. The energy versus number of iterations for monitoring purposes is stored in Equilibration_Energy.csv in the simulation folder.
+- You will be kept updated with the progress of the simulation eg.
+Equilibration 40% complete
+ LHCII in grana =  0.7293447293447294 / 0.7293447293447294
+ LHCII NN =  8.60058381242 / 8.60058381242
+- All data will be stored in the experiment folder in a folder called Data
+- takes 4-10 days on a standard PC
+
+
+Analysing the data
+
+Run_analysis(GRANA_SIZE,DATE,EXPERIMENT)
+- This should be run after the simulation.
+- creates 2 files in the simulation folder: Results.csv contains average nearest neighbour distances between PSII, LHCII and PSI, the percentage of LHCII in the grana, and the densities of the grana and stromal lamellae regions. 
+Nearest_Neighbour_Results records individual nearest neighbour distances in order to create distribution histograms.
+
+
+
 
 
 
