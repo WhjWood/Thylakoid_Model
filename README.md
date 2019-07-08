@@ -7,7 +7,7 @@ Simulates the interactions of PSII, LHCII and PSI in the thylakoid membrane.
 Parametrised using AFM,SIM and published data.
 
 
-     How to use Thylakoid_model_2.p
+  How to use Thylakoid_model_2.p
 
 in the if __name__== '__main__' clause (from line 1412):
 
@@ -52,6 +52,11 @@ Run_analysis(GRANA_SIZE,DATE,EXPERIMENT)
 - creates 2 files in the simulation folder: Results.csv contains average nearest neighbour distances between PSII, LHCII and PSI, the percentage of LHCII in the grana, and the densities of the grana and stromal lamellae regions. 
 Nearest_Neighbour_Results records individual nearest neighbour distances in order to create distribution histograms.
 
+Run_graph_antenna_analysis(GRANA_SIZE,DATE,EXPERIMENT,PSII=True,PSI=True)
+- This creates the chlorophyll networks which are used to measure the connectivity of PSII and the antenna sizes of PSII and PSI for topological analysis.
+- outputs are saved in the simulation folder
+- you can choose which photosystem to analyse eg. PSII = True runs the analysis for PSII
+- 1-2 days running time
 
 
 
