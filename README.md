@@ -6,11 +6,11 @@ Main code in Thylakoid_model_2.py
 Simulates the interactions of PSII, LHCII and PSI in the thylakoid membrane.
 Parametrised using AFM,SIM and published data.
 
-How to use Thylakoid_model_2.py
+###How to use Thylakoid_model_2.py###
 
 in the if __name__== '__main__' clause (from line 1412):
 
-set up the constants:
+#set up the constants:#
 
 GRANA_SIZE = 170 # width of grana, nm.
 - there are premade model files for thylakoids with 170 nm and 190 nm. Therefore, these number should be used.
