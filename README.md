@@ -59,6 +59,21 @@ Run_graph_antenna_analysis(GRANA_SIZE,DATE,EXPERIMENT,PSII=True,PSI=True)
 - 1-2 days running time
 
 
+   Below is an example of an entire experiment plus analysis
+
+GRANA_SIZE = 170 # width of grana, nm.
+Number_of_iterations = 11000001 # number of Monte Carlo steps, Note that data is only collected after 10M iterations.
+DATE = "08_07_19"  # a reference date in which the simulations are run.  
+EXPERIMENT = "Test_170"   # a reference for which experiment is being run.
+Stacking_Interaction_Energy = 4 # stacking interaction strength, kT (default = 4).
+LHCII_Binding_Interaction_Energy = 2 # intralayer LHCII interaction strength, kT (default = 2).
+PSI_interaction_energy = 0 # PSI - LHCII interaction strength, kT (default = 0, SII = 2).
+
+POPULATION1, POPULATION2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy,PSI_interaction_energy)
+
+Run_analysis(GRANA_SIZE,DATE,EXPERIMENT)
+Run_graph_antenna_analysis(GRANA_SIZE,DATE,EXPERIMENT,PSII=False,PSI=True)
+
 
 
 
