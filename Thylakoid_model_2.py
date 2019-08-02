@@ -675,6 +675,7 @@ def boundary_check(Ptype,x,dx,y,dy):
 
 
 def PSII_Hamiltonian(Population1,Population2):
+    """
     LHCIIs_Layer1_tuple = tuple(p.bound_LHCII() for p in Population1 if (p.Ptype=="C2S2M2") or (p.Ptype=="C2S2") or (p.Ptype=="LHCII"))
     LHCIIs_Layer2_tuple = tuple(p.bound_LHCII() for p in Population2 if (p.Ptype=="C2S2M2") or (p.Ptype=="C2S2") or (p.Ptype=="LHCII"))
     
@@ -701,6 +702,31 @@ def PSII_Hamiltonian(Population1,Population2):
     
     Einter1 = inter_layer(LHCIIs_Layer1,LHCIIs_Layer2)
     
+    """
+
+    LHCIIs_Layer1 = np.concatenate(tuple(p.bound_LHCII() for p in Population1 if (p.Ptype=="C2S2M2") or (p.Ptype=="C2S2") or (p.Ptype=="LHCII")), axis=1)
+    LHCIIs_Layer2 = np.concatenate(tuple(p.bound_LHCII() for p in Population2 if (p.Ptype=="C2S2M2") or (p.Ptype=="C2S2") or (p.Ptype=="LHCII")), axis=1)
+    
+    # Distances between LHCIIs in each layer
+    D1 = distances(LHCIIs_Layer1,LHCIIs_Layer1)
+    D2 = distances(LHCIIs_Layer2,LHCIIs_Layer2)
+    
+    # intra particle interaction energy in each layer
+    Eintra1 = intra_layer(D1)
+    Eintra2 = intra_layer(D2)
+    
+    # interlayer interaction energy (stacking interaction)
+    
+    # Stacking interactions only happen within grana radius
+
+    DC1 = (np.multiply(LHCIIs_Layer1,LHCIIs_Layer1).T*np.matrix([[1],[1]])).T # distances from centre
+    LHCIIs_Layer1_stacking = np.concatenate((LHCIIs_Layer1[0,:][DC1<grana_radius**2],LHCIIs_Layer1[1,:][DC1<grana_radius**2]),axis=0)
+    
+    DC2 = (np.multiply(LHCIIs_Layer2,LHCIIs_Layer2).T*np.matrix([[1],[1]])).T # distances from centre
+    LHCIIs_Layer2_stacking = np.concatenate((LHCIIs_Layer2[0,:][DC2<grana_radius**2],LHCIIs_Layer2[1,:][DC2<grana_radius**2]),axis=0)
+
+
+    Einter1 = inter_layer(LHCIIs_Layer1_stacking,LHCIIs_Layer2_stacking)
     return Eintra1 + Eintra2 + Einter1
 
 
