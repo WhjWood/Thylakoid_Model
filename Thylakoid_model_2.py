@@ -174,12 +174,6 @@ def Load_Population(path):
     return population
 
 def Plot_Population(Population,DirName):
-    MPSII_4_plot = np.concatenate(tuple(p.Pmatrix for p in Population if (p.Ptype=="C2S2M2") or (p.Ptype=="C2S2") or (p.Ptype=="PSII_mono")), axis=1)
-    MLHCII_4_plot = np.concatenate(tuple(p.Pmatrix for p in Population if (p.Ptype=="LHCII")), axis=1)
-    MB6F = np.concatenate(tuple(p.Pmatrix for p in Population if (p.Ptype=="B6F")), axis=1)
-    MPSI = np.concatenate(tuple(p.Pmatrix for p in Population if (p.Ptype=="PSI")), axis=1)
-    MATP = np.concatenate(tuple(p.Pmatrix for p in Population if (p.Ptype=="ATP")), axis=1)
-    
     #plotting
     fig=plt.figure()
     ax=fig.add_subplot(111)
@@ -187,14 +181,26 @@ def Plot_Population(Population,DirName):
     plt.axis([-300,300,-300,300])
     plt.axis('equal')
     plt.axes().set_aspect('equal')
-
-    plt.scatter(np.array(MPSII_4_plot[0,:]),np.array(MPSII_4_plot[1,:]),s=0.1,color='g')
-    plt.scatter(np.array(MLHCII_4_plot[0,:]),np.array(MLHCII_4_plot[1,:]),s=0.1,color='c')
-    plt.scatter(np.array(MPSI[0,:]),np.array(MPSI[1,:]),s=0.1,color='r')
-    plt.scatter(np.array(MB6F[0,:]),np.array(MB6F[1,:]),s=0.1,color='m')
-    plt.scatter(np.array(MATP[0,:]),np.array(MATP[1,:]),s=0.1,color='k')
     
-    plt.savefig(DirName+".eps",format='eps',dpi=1000)
+    Ptype_list = [p.Ptype for p in Population]
+    
+    if ("C2S2M2" in Ptype_list) or ("C2S2" in Ptype_list) or ("PSII_mono" in Ptype_list):
+        MPSII_4_plot = np.concatenate(tuple(p.Pmatrix for p in Population if (p.Ptype=="C2S2M2") or (p.Ptype=="C2S2") or (p.Ptype=="PSII_mono")), axis=1)
+        plt.scatter(np.array(MPSII_4_plot[0,:]),np.array(MPSII_4_plot[1,:]),s=0.1,color='g')
+    if "LHCII" in Ptype_list:
+        MLHCII_4_plot = np.concatenate(tuple(p.Pmatrix for p in Population if (p.Ptype=="LHCII")), axis=1)
+        plt.scatter(np.array(MLHCII_4_plot[0,:]),np.array(MLHCII_4_plot[1,:]),s=0.1,color='c')
+    if "B6F" in Ptype_list:
+        MB6F = np.concatenate(tuple(p.Pmatrix for p in Population if (p.Ptype=="B6F")), axis=1)
+        plt.scatter(np.array(MB6F[0,:]),np.array(MB6F[1,:]),s=0.1,color='m')
+    if "PSI" in Ptype_list:
+        MPSI = np.concatenate(tuple(p.Pmatrix for p in Population if (p.Ptype=="PSI")), axis=1)
+        plt.scatter(np.array(MPSI[0,:]),np.array(MPSI[1,:]),s=0.1,color='r')
+    if "ATP" in Ptype_list:
+        MATP = np.concatenate(tuple(p.Pmatrix for p in Population if (p.Ptype=="ATP")), axis=1)
+        plt.scatter(np.array(MATP[0,:]),np.array(MATP[1,:]),s=0.1,color='k')
+    
+    plt.savefig(DirName+".png",format='png',dpi=1000)
     plt.clf()
     plt.cla()
     plt.close('all')
@@ -392,6 +398,175 @@ def create_initial_population(GRANA_RADIUS):
     print("Created initial Population.\n")        
     return POPULATION
 
+def create_test_population(GRANA_RADIUS,Particle_Numbers): 
+    """Creates a population and returns list of Particle instances.
+    in this version, you can hard code the number of particles of each type by passing a list
+    Particle_Numbers= [NC2S2M2,NC2S2,NLHCIIg, NB6F_grana,NPSI,NLHCII_SL,NB6F_SL, NATP, NPSII_SL]"""
+    
+    print("Creating initial Population.\n")
+    global grana_radius
+    grana_radius = GRANA_RADIUS
+    
+    PSI_PSII_ratio = 1
+    
+    NPSII = round(1.14*(10**(-3))*np.pi*(grana_radius**2))
+    NB6F = round(0.5*NPSII)
+    B6F_GRANA = 0.5 #fraction of b6f allocated to grana
+    NPSII_grana = round(NPSII-(NB6F*B6F_GRANA))
+    NPSII = 1.2*NPSII_grana
+    NPSI= round(PSI_PSII_ratio*2*NPSII)
+    stroma_radius =  round(math.sqrt((NPSI/(math.pi*2.45*(10**(-3))))+(grana_radius**2)))
+    
+    #the following are made global for use in analysis
+    global grana_area
+    global stroma_area
+    grana_area = math.pi*(grana_radius**2)
+    stroma_area = math.pi*(stroma_radius**2)-grana_area
+    
+    NC2S2 = round(0.5*NPSII_grana) # % total PSII
+    NC2S2M2 = round(0.5*NPSII_grana) # % total PSII
+    LHCII_per_RC = 5
+    LHCII_grana = 0.7
+    NLHCIIg = round(LHCII_grana*(NPSII*2*LHCII_per_RC-(NC2S2*2+NC2S2M2*4)))
+    NB6F_grana = round(B6F_GRANA*NB6F)
+    
+    
+    NB6F_SL = round((1-B6F_GRANA)*NB6F)
+    NATP = round(0.7*2*NPSII)
+    NPSII_SL = round(0.2*NPSII_grana) #2x10% NPSII or 10% reaction centres
+    NLHCII_SL =  round((1-LHCII_grana)*(NPSII*2*LHCII_per_RC-(NC2S2*2+NC2S2M2*4)))
+    
+    
+    [NC2S2M2,NC2S2,NLHCIIg, NB6F_grana,NPSI,NLHCII_SL,NB6F_SL, NATP, NPSII_SL] = Particle_Numbers
+    
+    # Numbers as dictionary
+    N_Particles_grana ={"C2S2M2":NC2S2M2,"C2S2":NC2S2,"LHCII":NLHCIIg,"B6F": NB6F_grana}
+    N_Particles_SL ={"PSI":NPSI, "LHCII":NLHCII_SL, "B6F": NB6F_SL, "ATP":NATP, "PSII_mono":NPSII_SL}
+
+    # grana boundaries
+    
+    BOUNDARIES1 = [(round(grana_radius*np.cos(T*(2*np.pi/10000.0))),round(grana_radius*np.sin(T*(2*np.pi/10000.0)))) for T in range(10000)]
+    BOUNDARIES2 = [(round((grana_radius+1)*np.cos(T*(2*np.pi/10000.0))),round((grana_radius+1)*np.sin(T*(2*np.pi/10000.0)))) for T in range(10000)]
+    
+    BOUNDARIES_grana  = list(set(BOUNDARIES1[:]) | set(BOUNDARIES2[:]) )                                            
+    BOUNDARIES_grana = remove_repeat_cols(list_to_matrix(BOUNDARIES_grana))
+    
+    #Stromal lamellae boundaries
+    BOUNDARIES3 = [(round(grana_radius*np.cos(T*(2*np.pi/10000.0))),round(grana_radius*np.sin(T*(2*np.pi/10000.0)))) for T in range(10000)]
+    BOUNDARIES4 = [(round((grana_radius-1)*np.cos(T*(2*np.pi/10000.0))),round((grana_radius-1)*np.sin(T*(2*np.pi/10000.0)))) for T in range(10000)]
+    BOUNDARIES5 = [(round((stroma_radius)*np.cos(T*(2*np.pi/10000.0))),round((stroma_radius)*np.sin(T*(2*np.pi/10000.0)))) for T in range(10000)]
+    BOUNDARIES6 = [(round((stroma_radius+1)*np.cos(T*(2*np.pi/10000.0))),round((stroma_radius+1)*np.sin(T*(2*np.pi/10000.0)))) for T in range(10000)]
+    
+    BOUNDARIES_SL  = list(set(BOUNDARIES3[:]) | set(BOUNDARIES4[:]) | set(BOUNDARIES5[:]) | set(BOUNDARIES6[:])) 
+    BOUNDARIES_SL = remove_repeat_cols(list_to_matrix(BOUNDARIES_SL))
+    
+    #LHCII BOUNDARIES
+    BOUNDARIES_LHCII  = list(set(BOUNDARIES5[:]) | set(BOUNDARIES6[:])) 
+    BOUNDARIES_LHCII = remove_repeat_cols(list_to_matrix(BOUNDARIES_LHCII))
+    global Complexes
+    Complexes = pickle.load(open("Complexes.p", 'rb'))
+    
+    ## create directory for saving intial population
+    Dir_Name = "Initial_test"
+    
+    import os
+    if not os.path.exists(Dir_Name):
+        os.makedirs(Dir_Name)
+        print("Created directory: "+Dir_Name)
+    else:
+        print("The directory", Dir_Name,"already exists")
+        Continue = "X"
+        while Continue not in {"Y", "y", "N", "n"}:
+            Continue = input("Do you want to continue with risk of data overwrite? (Y/N) : ")
+        if Continue=="N" or Continue =="n":
+            print("Aborting script")
+            import sys
+            sys.exit()
+        else:
+            print("Continuing with initial population build") # continue with risk of overwrite
+    
+
+    
+    POPULATION = []# stores objects from every Ptype  
+    
+    ## Grana particles
+    
+    for Ptype in ["C2S2M2","C2S2","B6F","LHCII"]:
+        print("Adding"+" "+Ptype+": "+str(N_Particles_grana[Ptype])+" particles into grana.")
+        NParticles = 0
+        while NParticles < N_Particles_grana[Ptype]:
+            x =  np.random.randint(0,2*grana_radius)-grana_radius
+            y =  np.random.randint(0,2*grana_radius)-grana_radius
+            
+            while np.sqrt(x**2 + y**2) >= grana_radius:
+                x =  np.random.randint(0,2*grana_radius)-grana_radius
+                y =  np.random.randint(0,2*grana_radius)-grana_radius
+            
+            New_Particle = Particle(x,y,theta=0, particle_type=Ptype)
+            #coord = [np.matrix([[x],[y]]),0.0, np.random.random()*2*np.pi]                                                   
+            
+            if len(POPULATION)==0:#only boundaries taken into account
+                COLL = collision3(BOUNDARIES_LHCII,New_Particle.Pmatrix)
+                sqr_dist = New_Particle.location[0,0]**2 + New_Particle.location[1,0]**2
+                while (COLL == True) or (sqr_dist>= grana_radius**2):
+                    coll2, bound, New_Particle_2  = particle_step2(np.matrix([[1000],[2000]]),BOUNDARIES_LHCII,New_Particle) # np.matrix([[1000],[2000]]) is a dummy population
+                    sqr_dist_2 = New_Particle_2.location[0,0]**2 + New_Particle_2.location[1,0]**2
+                    if sqr_dist_2 < grana_radius**2:
+                        New_Particle = New_Particle_2
+                        COLL = coll2
+                    sqr_dist = New_Particle.location[0,0]**2 + New_Particle.location[1,0]**2
+                    
+            
+            else:# other particles involved 
+                COLL = collision3(np.concatenate((population_matrix(POPULATION),BOUNDARIES_LHCII),axis =1),New_Particle.Pmatrix)
+                sqr_dist = New_Particle.location[0,0]**2 + New_Particle.location[1,0]**2
+                while (COLL == True) or (sqr_dist>= grana_radius**2):
+                    coll2, bound, New_Particle_2  = particle_step2(population_matrix(POPULATION),BOUNDARIES_LHCII,New_Particle)
+                    sqr_dist_2 = New_Particle_2.location[0,0]**2 + New_Particle_2.location[1,0]**2
+                    if sqr_dist_2 < grana_radius**2:
+                        New_Particle = New_Particle_2
+                        COLL = coll2
+                    sqr_dist = New_Particle.location[0,0]**2 + New_Particle.location[1,0]**2
+            
+            NParticles += 1
+            POPULATION.append(New_Particle)
+        
+    ## Stromal lamellae particles
+    
+    for Ptype in ["PSI", "B6F", "LHCII",  "ATP", "PSII_mono"]:
+        print("Adding"+" "+Ptype+": "+str(N_Particles_SL[Ptype])+" particles into stromal lamellae.")
+        NParticles = 0
+        while NParticles < N_Particles_SL[Ptype]:
+            r = np.random.randint(grana_radius+1,stroma_radius-1)
+            theta = np.random.random()*2*np.pi
+            x = int(r*np.sin(theta))
+            y = int(r*np.cos(theta))
+        
+            while (np.sqrt(x**2 + y**2) <= grana_radius) or (np.sqrt(x**2 + y**2) >= stroma_radius):
+                r = np.random.randint(grana_radius+1,stroma_radius-1)
+                theta = np.random.random()*2*np.pi
+                x = int(r*np.sin(theta))
+                y = int(r*np.cos(theta))
+            
+            New_Particle = Particle(x,y,theta=0, particle_type=Ptype)
+            #coord = [np.matrix([[x],[y]]),0.0, np.random.random()*2*np.pi]                                                   
+            sqr_dist = New_Particle.location[0,0]**2 + New_Particle.location[1,0]**2
+            COLL = collision3(np.concatenate((population_matrix(POPULATION),BOUNDARIES_LHCII),axis =1),New_Particle.Pmatrix)
+            while COLL == True or (grana_radius**2 > sqr_dist) or (sqr_dist > stroma_radius**2):
+                coll2, bound, New_Particle_2 = particle_step2(population_matrix(POPULATION),BOUNDARIES_LHCII,New_Particle)
+                sqr_dist_2 = New_Particle_2.location[0,0]**2 + New_Particle_2.location[1,0]**2
+                if (grana_radius**2 < sqr_dist_2 < stroma_radius**2):
+                    New_Particle = New_Particle_2
+                    COLL = coll2
+                sqr_dist = New_Particle.location[0,0]**2 + New_Particle.location[1,0]**2
+        
+            NParticles += 1
+            POPULATION.append(New_Particle)
+    
+    Save_Population(POPULATION, Dir_Name+"/POPULATION_initial_test_"+str(grana_radius))
+    Plot_Population(POPULATION,Dir_Name+"/POPULATION_initial_test_plot")
+    print("Created initial Population.\n")        
+    return POPULATION
 
 
 def particle_step2(POPULAT,BOUNDARIES,PARTICLE):
@@ -424,10 +599,10 @@ def time_step(Population1,Population2,L,BOUNDARIES,layer,current_energy):
     # coll = collision?, bound = gone from one domain to another?
     if coll == False:
         new_energy = Hamiltonian(Population[0:x]+[new_particle]+Population[x+1:],other_population)
-        if ((new_particle.Ptype =="C2S2M2") or (new_particle.Ptype =="C2S2") or (new_particle.Ptype =="LHCII")):
-            dE =  current_energy - new_energy # change in energy
-        else:
-            dE=0
+
+        dE =  current_energy - new_energy # change in energy
+
+        
         
         # Metropolis algorithm
         if dE <= 0:
@@ -478,13 +653,13 @@ def distances(M1,M2):
 
 def intra_layer(D):
     """calculates intralayer potentials from 1D matrix of distances"""
-    return E_intra*(D[(2*LHCII_radius<=D)&(D<=(2*LHCII_radius+3))].shape[0]) # may need to tighten the threshold from 6+3 nm m
+    return E_intra*(D[(6<=D)&(D<=8)].shape[0])/2.0 # division by 2 accounts for repeat measures 
 
 
 def inter_layer(X1,X2):
     """X1 and X2 are the LHCII locations in layers 1 and 2"""
     D = distances(X1,X2)
-    return np.sum(E_inter*np.square((D[D<LHCII_radius]-LHCII_radius)/LHCII_radius))
+    return np.sum(E_inter*np.square((D[D<LHCII_radius]-LHCII_radius)/LHCII_radius))/2.0 # division by 2 accounts for repeat measures 
 
 
 def boundary_check(Ptype,x,dx,y,dy):
@@ -500,8 +675,12 @@ def boundary_check(Ptype,x,dx,y,dy):
 
 
 def PSII_Hamiltonian(Population1,Population2):
-    LHCIIs_Layer1 = np.concatenate(tuple(p.bound_LHCII() for p in Population1 if (p.Ptype=="C2S2M2") or (p.Ptype=="C2S2") or (p.Ptype=="LHCII")), axis=1)
-    LHCIIs_Layer2 = np.concatenate(tuple(p.bound_LHCII() for p in Population1 if (p.Ptype=="C2S2M2") or (p.Ptype=="C2S2") or (p.Ptype=="LHCII")), axis=1)
+    LHCIIs_Layer1_tuple = tuple(p.bound_LHCII() for p in Population1 if (p.Ptype=="C2S2M2") or (p.Ptype=="C2S2") or (p.Ptype=="LHCII"))
+    LHCIIs_Layer2_tuple = tuple(p.bound_LHCII() for p in Population2 if (p.Ptype=="C2S2M2") or (p.Ptype=="C2S2") or (p.Ptype=="LHCII"))
+    
+    
+    LHCIIs_Layer1 = np.concatenate(LHCIIs_Layer1_tuple, axis=1)
+    LHCIIs_Layer2 = np.concatenate(LHCIIs_Layer2_tuple, axis=1)
     
     # Distances between LHCIIs in each layer
     D1 = distances(LHCIIs_Layer1,LHCIIs_Layer1)
@@ -512,6 +691,14 @@ def PSII_Hamiltonian(Population1,Population2):
     Eintra2 = intra_layer(D2)
     
     # interlayer interaction energy (stacking interaction)
+    
+    # Stacking interactions only happen within grana radius
+    LHCIIs_Layer1_tuple_stacking = tuple([p for p in LHCIIs_Layer1_tuple if np.multiply(p,p).sum() < grana_radius**2])
+    LHCIIs_Layer2_tuple_stacking = tuple([p for p in LHCIIs_Layer2_tuple if np.multiply(p,p).sum() < grana_radius**2])
+     
+    LHCIIs_Layer1 = np.concatenate(LHCIIs_Layer1_tuple_stacking, axis=1)
+    LHCIIs_Layer2 = np.concatenate(LHCIIs_Layer2_tuple_stacking, axis=1)
+    
     Einter1 = inter_layer(LHCIIs_Layer1,LHCIIs_Layer2)
     
     return Eintra1 + Eintra2 + Einter1
@@ -525,7 +712,7 @@ def intra_layer_PSI_LHCII(D):
 
 def PSI_Hamiltonian(Population1,Population2):
     LHCIIs_Layer1 = np.concatenate(tuple(p.bound_LHCII() for p in Population1 if (p.Ptype=="LHCII")), axis=1)
-    LHCIIs_Layer2 = np.concatenate(tuple(p.bound_LHCII() for p in Population1 if (p.Ptype=="LHCII")), axis=1)
+    LHCIIs_Layer2 = np.concatenate(tuple(p.bound_LHCII() for p in Population2 if (p.Ptype=="LHCII")), axis=1)
     
     PSIs_Layer1 =  np.concatenate(tuple(p.PSI_site() for p in Population1 if (p.Ptype=="PSI")), axis=1)
     PSIs_Layer2 =  np.concatenate(tuple(p.PSI_site() for p in Population2 if (p.Ptype=="PSI")), axis=1)
@@ -543,7 +730,6 @@ def PSI_Hamiltonian(Population1,Population2):
 def Hamiltonian(Population1,Population2):
 
     H = 0 # total Energy
-    
     # only calculate energy where interactions exist
     if (E_intra != 0) or (E_inter != 0):
         H += PSII_Hamiltonian(Population1,Population2)
@@ -551,7 +737,7 @@ def Hamiltonian(Population1,Population2):
         H += PSI_Hamiltonian(Population1,Population2)
     return H 
 
-def Run_Simulation(GRANA_RADIUS=170,DATE="11_05_18",EXPERIMENT="FREE_LHCII",TMAX=1100001,Stacking_Interaction_Energy = 4, LHCII_Binding_Interaction_Energy = 2,PSI_Interaction_Energy=0):
+def Run_Simulation(GRANA_RADIUS=170,DATE="11_05_18",EXPERIMENT="FREE_LHCII",TMAX=1100001,Stacking_Interaction_Energy = 4, LHCII_Binding_Interaction_Energy = 2,PSI_Interaction_Energy=0,POPULATION1=[],POPULATION2=[]):
     
     ##parameters which describe the model
     ##see Wood et al., 2019/2020 for more details
@@ -618,8 +804,8 @@ def Run_Simulation(GRANA_RADIUS=170,DATE="11_05_18",EXPERIMENT="FREE_LHCII",TMAX
     
     LHCII_radius = 3.5 # nm
     interaction_radius = 5.5 # nm
-    E_intra = Stacking_Interaction_Energy #KT , intralayer interactions
-    E_inter = LHCII_Binding_Interaction_Energy #KT, interactions over the stromal gap
+    E_intra =  LHCII_Binding_Interaction_Energy#KT , intralayer interactions
+    E_inter = Stacking_Interaction_Energy #KT, interactions over the stromal gap
     E_intra_PSI = PSI_Interaction_Energy #KT. binding o LHCII to PSI
     # grana boundaries
     
@@ -650,17 +836,32 @@ def Run_Simulation(GRANA_RADIUS=170,DATE="11_05_18",EXPERIMENT="FREE_LHCII",TMAX
     #POPULATION2 = pickle.load(open("Population2_initial", 'rb'))
     
     #grana size = 170
-    if grana_radius == 170:
-        POPULATION1 = Load_Population("Initial/POPULATION1_random_170")
-        POPULATION2 = Load_Population("Initial/POPULATION2_random_170")
-    elif grana_radius == 190:#grana size = 190
-        POPULATION1 = Load_Population("Initial/POPULATION1_random_190")
-        POPULATION2 = Load_Population("Initial/POPULATION2_random_190")
+    if POPULATION1==[]:
+        if grana_radius == 170:
+            POPULATION1 = Load_Population("Initial/POPULATION1_random_170")
+        elif grana_radius == 190:#grana size = 190
+            POPULATION1 = Load_Population("Initial/POPULATION1_random_190")
+        else:
+            print("Incorrect grana size")
+            print("Aborting script")
+            import sys
+            sys.exit()
     else:
-        print("Incorrect grana size")
-        print("Aborting script")
-        import sys
-        sys.exit()
+        print("Using loaded POPULATION1...")
+    
+    if POPULATION2==[]:
+        if grana_radius == 170:
+            POPULATION2 = Load_Population("Initial/POPULATION2_random_170")
+        elif grana_radius == 190:#grana size = 190
+            POPULATION2 = Load_Population("Initial/POPULATION2_random_190")
+        else:
+            print("Incorrect grana size")
+            print("Aborting script")
+            import sys
+            sys.exit()
+    else:
+        print("Using loaded POPULATION2...")
+    
     
     print("Model Initialised. Running Simulation\n")
     # Create the directory for the experiment
@@ -700,8 +901,9 @@ def Run_Simulation(GRANA_RADIUS=170,DATE="11_05_18",EXPERIMENT="FREE_LHCII",TMAX
     for t in np.arange(Tmax):
         if (t%1000000 == 0) and (t<10000000):
             print("Equilibration "+str(int(t*(10/1000000)))+"% complete")
+            print("Energy = ", str(ENERGY[-1]))
             print(" LHCII in grana = ",LHCII_Localisation_Analysis(POPULATION1),"/",LHCII_Localisation_Analysis(POPULATION2))
-            print(" LHCII NN = ",Nearest_Neighbour_Distances(POPULATION1, ['LHCII']),"/",Nearest_Neighbour_Distances(POPULATION2, ['LHCII']))
+            print(" LHCII NN = ",np.mean(Nearest_Neighbour_Distances(POPULATION1, ['LHCII'])),"/",np.mean(Nearest_Neighbour_Distances(POPULATION2, ['LHCII'])))
         elif t==10000000:
             print("Collecting data")
             
@@ -710,6 +912,7 @@ def Run_Simulation(GRANA_RADIUS=170,DATE="11_05_18",EXPERIMENT="FREE_LHCII",TMAX
         # the following is a decision tree that leads to the perturbation
         X = X_array[t]
         if X<0.5: # Layer one
+            
             layer = 1
             POPULATION1, new_energy = time_step(POPULATION1,POPULATION2, Nparticles, BOUNDARIES_LHCII, layer, ENERGY[-1])
             ENERGY.append(new_energy)
@@ -723,7 +926,7 @@ def Run_Simulation(GRANA_RADIUS=170,DATE="11_05_18",EXPERIMENT="FREE_LHCII",TMAX
         
         # Checkpoint saves are there to start again if code is interupted
         # after 10M iterations data is collected every 1000 iterations
-        if (t%1000000==0) and (10000000>t>1): # saves every millionth iteration
+        if (t%1000000==0) and (10000000>t): # saves every millionth iteration
             Save_Population(POPULATION1, Dir_Name+"/Data/POPULATION1_Checkpoint_"+str(t))
             Save_Population(POPULATION2, Dir_Name+"/Data/POPULATION2_Checkpoint_"+str(t))
             
@@ -1214,25 +1417,33 @@ def Run_analysis(GRANA_RADIUS,DATE,EXPERIMENT):
          POPULATION1 = Load_Population(Dir_Name+"POPULATION1_"+str(t))
          
          #run the analysis functions defined elsewhere
-         NN_PSII = np.mean(np.array(Nearest_Neighbour_Distances(POPULATION1, ["C2S2M2","C2S2"])))
-         NN_LHCII = np.mean(np.array(Nearest_Neighbour_Distances(POPULATION1, ["LHCII"])))
-         NN_PSI = np.mean(np.array(Nearest_Neighbour_Distances(POPULATION1, ["PSI"])))
-         LHCII_grana_fraction = LHCII_Localisation_Analysis(POPULATION1)
-         grana_density, sl_density = Density_Analysis(POPULATION1)
+         NN_PSII_1 = np.mean(np.array(Nearest_Neighbour_Distances(POPULATION1, ["C2S2M2","C2S2"])))
+         NN_LHCII_1 = np.mean(np.array(Nearest_Neighbour_Distances(POPULATION1, ["LHCII"])))
+         NN_PSI_1 = np.mean(np.array(Nearest_Neighbour_Distances(POPULATION1, ["PSI"])))
+         LHCII_grana_fraction_1 = LHCII_Localisation_Analysis(POPULATION1)
+         grana_density_1, sl_density_1 = Density_Analysis(POPULATION1)
          
          #add the results to the dataframe 
-         Analysis_Results = Analysis_Results.append({"PSII_avg_NN":NN_PSII,"LHCII_avg_NN":NN_LHCII,"PSI_avg_NN":NN_PSI,"LHCII_grana_fraction":LHCII_grana_fraction,"Grana_density":grana_density, "SL_density":sl_density},ignore_index=True)
+         #Analysis_Results = Analysis_Results.append({"PSII_avg_NN":NN_PSII,"LHCII_avg_NN":NN_LHCII,"PSI_avg_NN":NN_PSI,"LHCII_grana_fraction":LHCII_grana_fraction,"Grana_density":grana_density, "SL_density":sl_density},ignore_index=True)
     
          ## Population2##
          #load the data from file
          POPULATION2 = Load_Population(Dir_Name+"POPULATION2_"+str(t))
          
          #run the analysis functions defined elsewhere
-         NN_PSII = np.mean(np.array(Nearest_Neighbour_Distances(POPULATION2, ["C2S2M2","C2S2"])))
-         NN_LHCII = np.mean(np.array(Nearest_Neighbour_Distances(POPULATION2, ["LHCII"])))
-         NN_PSI = np.mean(np.array(Nearest_Neighbour_Distances(POPULATION2, ["PSI"])))
-         LHCII_grana_fraction = LHCII_Localisation_Analysis(POPULATION2)
-         grana_density, sl_density = Density_Analysis(POPULATION2)
+         NN_PSII_2 = np.mean(np.array(Nearest_Neighbour_Distances(POPULATION2, ["C2S2M2","C2S2"])))
+         NN_LHCII_2 = np.mean(np.array(Nearest_Neighbour_Distances(POPULATION2, ["LHCII"])))
+         NN_PSI_2 = np.mean(np.array(Nearest_Neighbour_Distances(POPULATION2, ["PSI"])))
+         LHCII_grana_fraction_2 = LHCII_Localisation_Analysis(POPULATION2)
+         grana_density_2, sl_density_2 = Density_Analysis(POPULATION2)
+         
+         # average over the 2 populations
+         NN_PSII = np.mean([NN_PSII_1,NN_PSII_2])
+         NN_LHCII = np.mean([NN_LHCII_1, NN_LHCII_2])
+         NN_PSI = np.mean([NN_PSI_1, NN_PSI_2])
+         LHCII_grana_fraction = np.mean([LHCII_grana_fraction_1,LHCII_grana_fraction_2])
+         grana_density = np.mean([grana_density_1,grana_density_2])
+         sl_density = np.mean([sl_density_1,sl_density_2])
          
          #add the results to the dataframe 
          Analysis_Results = Analysis_Results.append({"PSII_avg_NN":NN_PSII,"LHCII_avg_NN":NN_LHCII,"PSI_avg_NN":NN_PSI,"LHCII_grana_fraction":LHCII_grana_fraction,"Grana_density":grana_density, "SL_density":sl_density},ignore_index=True)
@@ -1403,11 +1614,13 @@ def Run_graph_antenna_analysis(GRANA_RADIUS,DATE,EXPERIMENT, PSII=True, PSI=True
 
 
 if __name__== '__main__':
+    
+    
     # generally constants
     t0 = time.time()
     GRANA_SIZE = 170 # width of grana, nm.
     Number_of_iterations = 11000001 # number of Monte Carlo steps, Note that data is only collected after 10M iterations.
-    DATE = "17_06_19"  # a reference date in which the simulations are run.
+    DATE = "02_08_19"  # a reference date in which the simulations are run.
     
     #create_initial_population(GRANA_SIZE) # optional usually
     #print("Time elapsed ", (time.time()-t0)/3600.0, "hours")
@@ -1415,19 +1628,40 @@ if __name__== '__main__':
     
     ###Test Simulation###
     
-    EXPERIMENT = "SII"   # a reference for which experiment is being run.
+    EXPERIMENT = "Stacking_test"   # a reference for which experiment is being run.
+    Stacking_Interaction_Energy = 4 # stacking interaction strength, kT (default = 4).
+    LHCII_Binding_Interaction_Energy = 0 # intralayer LHCII interaction strength, kT (default = 2).
+    PSI_interaction_energy = 0 # PSI - LHCII interaction strength, kT (default = 0, SII = 2).
+    
+    POP1 = create_test_population(GRANA_SIZE,Particle_Numbers= [0,0,180, 0,0,20,0, 0, 0])
+    POP2 = create_test_population(GRANA_SIZE,Particle_Numbers= [0,0,180, 0,0,20,0, 0, 0])
+
+
+    POP1, POP2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy,PSI_interaction_energy,POPULATION1=POP1,POPULATION2=POP2)
+    print("Time elapsed ", (time.time()-t0)/3600.0, "hours")
+    
+    
+    
+        
+    EXPERIMENT = "SII_test"   # a reference for which experiment is being run.
     Stacking_Interaction_Energy = 0 # stacking interaction strength, kT (default = 4).
     LHCII_Binding_Interaction_Energy = 0 # intralayer LHCII interaction strength, kT (default = 2).
-    PSI_interaction_energy = 2 # PSI - LHCII interaction strength, kT (default = 0, SII = 2).
+    PSI_interaction_energy = 4 # PSI - LHCII interaction strength, kT (default = 0, SII = 2).
+    
+    POP1 = create_test_population(GRANA_SIZE,Particle_Numbers= [0,0,180, 0,50,20,0, 0, 0])
+    POP2 = create_test_population(GRANA_SIZE,Particle_Numbers= [0,0,180, 0,50,20,0, 0, 0])
+
+
+    POP1, POP2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy,PSI_interaction_energy,POPULATION1=POP1,POPULATION2=POP2)
+    print("Time elapsed ", (time.time()-t0)/3600.0, "hours")
+    
+    
+    #Run_analysis(GRANA_SIZE,DATE,EXPERIMENT)
+    #print("Time elapsed ", (time.time()-t0)/3600.0, "hours")
+    
+    #Run_graph_antenna_analysis(GRANA_SIZE,DATE,EXPERIMENT,PSII=True,PSI=True)
+      
+    #print("Completed in ", (time.time()-t0)/3600.0, "hours")
     
 
-    #POPULATION1, POPULATION2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy,PSI_interaction_energy)
-    print("Time elapsed ", (time.time()-t0)/3600.0, "hours")
-    
-    Run_analysis(GRANA_SIZE,DATE,EXPERIMENT)
-    print("Time elapsed ", (time.time()-t0)/3600.0, "hours")
-    
-    #Run_graph_antenna_analysis(GRANA_SIZE,DATE,EXPERIMENT,PSII=False,PSI=True)
-      
-    print("Completed in ", (time.time()-t0)/3600.0, "hours")
     
