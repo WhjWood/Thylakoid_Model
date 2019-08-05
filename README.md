@@ -9,7 +9,7 @@ Parametrised using AFM,SIM and published data.
 
   How to use Thylakoid_model_2.p
 
-in the if __name__== '__main__' clause (from line 1412):
+in the if __name__== '__main__' clause (from line 1621):
 
 set up the constants:
 
