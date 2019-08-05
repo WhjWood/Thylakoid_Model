@@ -466,26 +466,6 @@ def create_test_population(GRANA_RADIUS,Particle_Numbers):
     global Complexes
     Complexes = pickle.load(open("Complexes.p", 'rb'))
     
-    ## create directory for saving intial population
-    Dir_Name = "Initial_test"
-    
-    import os
-    if not os.path.exists(Dir_Name):
-        os.makedirs(Dir_Name)
-        print("Created directory: "+Dir_Name)
-    else:
-        print("The directory", Dir_Name,"already exists")
-        Continue = "X"
-        while Continue not in {"Y", "y", "N", "n"}:
-            Continue = input("Do you want to continue with risk of data overwrite? (Y/N) : ")
-        if Continue=="N" or Continue =="n":
-            print("Aborting script")
-            import sys
-            sys.exit()
-        else:
-            print("Continuing with initial population build") # continue with risk of overwrite
-    
-
     
     POPULATION = []# stores objects from every Ptype  
     
@@ -563,8 +543,7 @@ def create_test_population(GRANA_RADIUS,Particle_Numbers):
             NParticles += 1
             POPULATION.append(New_Particle)
     
-    Save_Population(POPULATION, Dir_Name+"/POPULATION_initial_test_"+str(grana_radius))
-    Plot_Population(POPULATION,Dir_Name+"/POPULATION_initial_test_plot")
+
     print("Created initial Population.\n")        
     return POPULATION
 
@@ -1659,13 +1638,24 @@ if __name__== '__main__':
     LHCII_Binding_Interaction_Energy = 0 # intralayer LHCII interaction strength, kT (default = 2).
     PSI_interaction_energy = 0 # PSI - LHCII interaction strength, kT (default = 0, SII = 2).
     
-    POP1 = create_test_population(GRANA_SIZE,Particle_Numbers= [0,0,180, 0,0,20,0, 0, 0])
-    POP2 = create_test_population(GRANA_SIZE,Particle_Numbers= [0,0,180, 0,0,20,0, 0, 0])
+    POP1 = create_test_population(GRANA_SIZE,Particle_Numbers= [0,0,450, 0,0,50,0, 0, 0])
+    POP2 = create_test_population(GRANA_SIZE,Particle_Numbers= [0,0,450, 0,0,50,0, 0, 0])
 
 
     POP1, POP2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy,PSI_interaction_energy,POPULATION1=POP1,POPULATION2=POP2)
     print("Time elapsed ", (time.time()-t0)/3600.0, "hours")
     
+    EXPERIMENT = "PSII_LHCII_test"   # a reference for which experiment is being run.
+    Stacking_Interaction_Energy = 0 # stacking interaction strength, kT (default = 4).
+    LHCII_Binding_Interaction_Energy = 4 # intralayer LHCII interaction strength, kT (default = 2).
+    PSI_interaction_energy = 0 # PSI - LHCII interaction strength, kT (default = 0, SII = 2).
+    
+    POP1 = create_test_population(GRANA_SIZE,Particle_Numbers= [0,0,450, 0,0,50,0, 0, 0])
+    POP2 = create_test_population(GRANA_SIZE,Particle_Numbers= [0,0,450, 0,0,50,0, 0, 0])
+
+
+    POP1, POP2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy,PSI_interaction_energy,POPULATION1=POP1,POPULATION2=POP2)
+    print("Time elapsed ", (time.time()-t0)/3600.0, "hours")
     
     
         
@@ -1674,8 +1664,8 @@ if __name__== '__main__':
     LHCII_Binding_Interaction_Energy = 0 # intralayer LHCII interaction strength, kT (default = 2).
     PSI_interaction_energy = 4 # PSI - LHCII interaction strength, kT (default = 0, SII = 2).
     
-    POP1 = create_test_population(GRANA_SIZE,Particle_Numbers= [0,0,180, 0,50,20,0, 0, 0])
-    POP2 = create_test_population(GRANA_SIZE,Particle_Numbers= [0,0,180, 0,50,20,0, 0, 0])
+    POP1 = create_test_population(GRANA_SIZE,Particle_Numbers= [0,0,450, 0,100,50,0, 0, 0])
+    POP2 = create_test_population(GRANA_SIZE,Particle_Numbers= [0,0,450, 0,100,50,0, 0, 0])
 
 
     POP1, POP2 = Run_Simulation(GRANA_SIZE,DATE,EXPERIMENT,Number_of_iterations,Stacking_Interaction_Energy,LHCII_Binding_Interaction_Energy,PSI_interaction_energy,POPULATION1=POP1,POPULATION2=POP2)
