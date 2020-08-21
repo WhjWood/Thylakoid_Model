@@ -23,40 +23,42 @@ import Thylakoid_model_2 as TM
 
 # generally constants
 t0 = time.time()
-Experiment_Setting = st.sidebar.selectbox("Experiment", ["SI","SII","Custom Potentials"])
-if Experiment_Setting == "SI":
+Experiment_Setting = st.sidebar.selectbox("Experiment", ["State I","State II","Custom"])
+if Experiment_Setting == "State I":
     EXPERIMENT = "SI"
     GRANA_SIZE = 190
     Stacking_Interaction_Energy = 4 # stacking interaction strength, kT (default = 4). 
     LHCII_Binding_Interaction_Energy = 2 # intralayer LHCII interaction strength, kT (default = 2).
     PSI_interaction_energy = 0 # PSI - LHCII interaction strength, kT (default = 0, SII = 3).
-elif Experiment_Setting == "SII":
+elif Experiment_Setting == "State II":
     EXPERIMENT = "SII"
     GRANA_SIZE = 170
     Stacking_Interaction_Energy = 0 # stacking interaction strength, kT (default = 4). 
     LHCII_Binding_Interaction_Energy = 0 # intralayer LHCII interaction strength, kT (default = 2).
     PSI_interaction_energy = 3 # PSI - LHCII interaction strength, kT (default = 0, SII = 3.
     
-elif Experiment_Setting == "Custom Potentials":
-    Stacking_Interaction_Energy = st.sidebar.text_input("Stacking interaction (KT)")
+elif Experiment_Setting == "Custom":
+    grana_radius = st.sidebar.radio("Grana Radius (nm)", [190,170])
+    GRANA_SIZE = int(grana_radius)
+    Stacking_Interaction_Energy = st.sidebar.text_input("Stacking interaction (KT)",0)
     try:
         Stacking_Interaction_Energy = float(Stacking_Interaction_Energy)
     except:
         st.write("Unable to convert stacking interaction energy to float")
         
-    LHCII_Binding_Interaction_Energy = st.sidebar.text_input("LHCII Lateral interaction (KT)")
+    LHCII_Binding_Interaction_Energy = st.sidebar.text_input("LHCII Lateral interaction (KT)",0)
     try:
         LHCII_Binding_Interaction_Energy = float(LHCII_Binding_Interaction_Energy)
     except:
         st.write("Unable to convert lateral interaction energy to float")
     
-    PSI_interaction_energy = st.sidebar.text_input("PSI-LHCII interaction (KT)")
+    PSI_interaction_energy = st.sidebar.text_input("PSI-LHCII interaction (KT)",0)
     
     try:
         PSI_interaction_energy = float(PSI_interaction_energy)
     except:
         st.write("Unable to convert PSI-LHCII interaction energy to float")
-    EXPERIMENT = "Custom_"+str(Stacking_Interaction_Energy)+"_"+str(LHCII_Binding_Interaction_Energy)+"_"+str(PSI_interaction_energy)
+    EXPERIMENT = "Custom_" + str(GRANA_SIZE )+ "_" + str(Stacking_Interaction_Energy)+"_"+str(LHCII_Binding_Interaction_Energy)+"_"+str(PSI_interaction_energy)
 
 
 Run_Analysis = st.sidebar.checkbox("Run Post Simulation Analysis")
