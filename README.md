@@ -9,7 +9,7 @@ Parametrised using AFM,SIM and published data.
 The simplest way to run simulations is to use the streamlit app
 
 - A guide for how to do this can be found here:
-<in progress>
+https://whjwood.com/2020/08/21/running-thylakoid-model-simulations-is-now-much-easier/
 
  How to use Thylakoid_model_2.py in Python
 
