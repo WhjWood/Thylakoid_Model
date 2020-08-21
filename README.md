@@ -6,8 +6,12 @@ Main code in Thylakoid_model_2.py
 Simulates the interactions of PSII, LHCII and PSI in the thylakoid membrane.
 Parametrised using AFM,SIM and published data.
 
+The simplest way to run simulations is to use the streamlit app
 
-  How to use Thylakoid_model_2.p
+- A guide for how to do this can be found here:
+<in progress>
+
+ How to use Thylakoid_model_2.py in Python
 
 in the if __name__== '__main__' clause (from line 1621):
 
